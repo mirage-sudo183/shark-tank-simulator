@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investor Panel — Shark Tank Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Top Header Bar (Light) -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+        </div>
+        <span class="meeting-title">Investor Panel — Series A Pitch</span>
+        <div class="timer-container">
+          <div class="timer" data-state="neutral">08:23</div>
+          <div class="pressure-bar" data-state="neutral"></div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="user-avatar">
+          <span>Y</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-wrapper">
+      <!-- Video Area -->
+      <main class="video-area">
+        <!-- Participant Strip -->
+        <div class="participant-strip">
+          <div class="participant" data-investor="marcus" data-state="live">
+            <div class="participant-video">
+              <div class="participant-avatar">MK</div>
+            </div>
+            <div class="participant-status status--live"></div>
+            <span class="participant-name">Marcus Kellan</span>
+          </div>
+
+          <div class="participant" data-investor="victor" data-state="live">
+            <div class="participant-video">
+              <div class="participant-avatar">VS</div>
+            </div>
+            <div class="participant-status status--live"></div>
+            <span class="participant-name">Victor Slate</span>
+          </div>
+
+          <div class="participant participant--you">
+            <div class="participant-video participant-video--you">
+              <div class="participant-avatar">YOU</div>
+            </div>
+            <div class="participant-status status--presenting"></div>
+            <span class="participant-name">You</span>
+          </div>
+
+          <div class="participant participant--out" data-investor="elena" data-state="out">
+            <div class="participant-video participant-video--out">
+              <div class="participant-avatar">EB</div>
+            </div>
+            <div class="participant-status status--out"></div>
+            <span class="participant-name">Elena Brooks</span>
+          </div>
+
+          <div class="participant" data-investor="richard" data-state="live">
+            <div class="participant-video">
+              <div class="participant-avatar">RH</div>
+            </div>
+            <div class="participant-status status--live"></div>
+            <span class="participant-name">Richard Hale</span>
+          </div>
+
+          <div class="participant participant--out" data-investor="daniel" data-state="out">
+            <div class="participant-video participant-video--out">
+              <div class="participant-avatar">DF</div>
+            </div>
+            <div class="participant-status status--out"></div>
+            <span class="participant-name">Daniel Frost</span>
+          </div>
+        </div>
+
+        <!-- Featured Speaker -->
+        <div class="featured-video">
+          <div class="featured-content">
+            <div class="featured-avatar">YOU</div>
+          </div>
+          <div class="featured-name-badge">You (Founder)</div>
+          <div class="featured-caption">
+            "We're targeting a $4.2B market with 18% annual growth..."
+          </div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="controls-bar">
+          <div class="controls-left">
+            <div class="meeting-id">
+              <span>stk-a8x2-qr9</span>
+              <button class="copy-btn" title="Copy meeting ID">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="controls-center">
+            <button class="control-btn control-btn--muted" title="Unmute">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="1" y1="1" x2="23" y2="23"/>
+                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <button class="control-btn" title="Camera">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </svg>
+            </button>
+            <button class="control-btn" title="Share Screen">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/>
+                <line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+            </button>
+            <button class="control-btn control-btn--active" title="Chat">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+            <button class="control-btn" title="Record">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="4" fill="currentColor"/>
+              </svg>
+            </button>
+            <button class="control-btn" title="More">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="1"/>
+                <circle cx="19" cy="12" r="1"/>
+                <circle cx="5" cy="12" r="1"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="controls-right">
+            <button class="leave-btn">Exit Panel</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- Chat Panel -->
+      <aside class="chat-panel">
+        <div class="chat-header">
+          <span class="chat-title">Panel</span>
+          <button class="chat-menu-btn" title="More options">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/>
+              <circle cx="12" cy="5" r="1"/>
+              <circle cx="12" cy="19" r="1"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="chat-messages">
+          <div class="message">
+            <div class="message-header">
+              <span class="message-author">Marcus Kellan</span>
+              <span class="message-time">08:41</span>
+            </div>
+            <p class="message-text">What's your CAC?</p>
+          </div>
+
+          <div class="message message--system">
+            <p class="message-text">Elena Brooks is OUT.</p>
+          </div>
+
+          <div class="message">
+            <div class="message-header">
+              <span class="message-author">Victor Slate</span>
+              <span class="message-time">08:38</span>
+            </div>
+            <p class="message-text">Your margin feels flimsy.</p>
+          </div>
+
+          <div class="message">
+            <div class="message-header">
+              <span class="message-author">Richard Hale</span>
+              <span class="message-time">08:35</span>
+            </div>
+            <p class="message-text">What's the wedge and why now?</p>
+          </div>
+
+          <div class="message message--system">
+            <p class="message-text">Marcus Kellan is reconsidering.</p>
+          </div>
+
+          <div class="message message--you">
+            <div class="message-header">
+              <span class="message-author">You</span>
+              <span class="message-time">08:33</span>
+            </div>
+            <p class="message-text">We've validated with 200+ enterprise pilots.</p>
+          </div>
+
+          <div class="message">
+            <div class="message-header">
+              <span class="message-author">Daniel Frost</span>
+              <span class="message-time">08:29</span>
+            </div>
+            <p class="message-text">I'm not convinced there's a real market.</p>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <input type="text" class="chat-input" placeholder="Write a message..." />
+          <button class="send-btn" title="Send">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
