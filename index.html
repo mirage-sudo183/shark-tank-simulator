@@ -8,230 +8,318 @@
 </head>
 <body>
   <div class="app">
-    <!-- Top Header Bar (Light) -->
-    <header class="header">
-      <div class="header-left">
-        <div class="logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <!-- ========================================
+         VIEW 1: Entry Form
+         ======================================== -->
+    <div class="view view--entry" id="entryView">
+      <div class="entry-container">
+        <div class="entry-header">
+          <div class="entry-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="entry-title">Enter the Panel</h1>
+          <p class="entry-subtitle">5 investors. 10 minutes. No second chances.</p>
+        </div>
+
+        <form class="entry-form" id="entryForm">
+          <!-- Company Name -->
+          <div class="form-group">
+            <label class="form-label" for="companyName">Company name</label>
+            <input type="text" class="form-input" id="companyName" name="companyName" required placeholder="e.g. Acme Corp">
+          </div>
+
+          <!-- Amount Raising -->
+          <div class="form-row">
+            <div class="form-group form-group--flex">
+              <label class="form-label" for="amountRaising">Amount raising</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix">$</span>
+                <input type="number" class="form-input form-input--with-prefix" id="amountRaising" name="amountRaising" required placeholder="500000" min="1">
+              </div>
+            </div>
+            <div class="form-group form-group--small">
+              <label class="form-label" for="equityPercent">Equity offered</label>
+              <div class="input-with-suffix">
+                <input type="number" class="form-input form-input--with-suffix" id="equityPercent" name="equityPercent" required placeholder="10" min="1" max="100">
+                <span class="input-suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- What the company does -->
+          <div class="form-group">
+            <label class="form-label" for="companyDescription">What does your company do?</label>
+            <textarea class="form-textarea" id="companyDescription" name="companyDescription" required placeholder="Describe your product or service in plain language..." maxlength="300" rows="3"></textarea>
+            <span class="form-hint"><span id="descCharCount">0</span>/300</span>
+          </div>
+
+          <!-- Why now -->
+          <div class="form-group">
+            <label class="form-label" for="whyNow">Why are you pitching now?</label>
+            <textarea class="form-textarea" id="whyNow" name="whyNow" required placeholder="What's changed? Why is this the right moment?" maxlength="200" rows="2"></textarea>
+            <span class="form-hint"><span id="whyNowCharCount">0</span>/200</span>
+          </div>
+
+          <!-- Proof Signal -->
+          <div class="form-group">
+            <label class="form-label" for="proofType">What's your strongest proof right now?</label>
+            <select class="form-select" id="proofType" name="proofType" required>
+              <option value="" disabled selected>Select one...</option>
+              <option value="revenue">Revenue / MRR</option>
+              <option value="users">Active users</option>
+              <option value="customers">Signed customers / pilots</option>
+              <option value="idea">Idea stage</option>
+            </select>
+          </div>
+
+          <!-- Proof Value (conditional) -->
+          <div class="form-group form-group--proof" id="proofValueGroup" style="display: none;">
+            <label class="form-label" for="proofValue" id="proofValueLabel">Value</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix" id="proofValuePrefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="proofValue" name="proofValue" placeholder="0" min="0">
+            </div>
+          </div>
+
+          <!-- Optional: Pushback expectation -->
+          <div class="form-group form-group--optional">
+            <label class="form-label" for="expectedPushback">
+              What do you expect investors to push back on?
+              <span class="form-label-optional">Optional</span>
+            </label>
+            <input type="text" class="form-input" id="expectedPushback" name="expectedPushback" placeholder="e.g. Our go-to-market strategy...">
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="entry-submit">Enter the Panel</button>
+          
+          <!-- Skip button (testing only) -->
+          <button type="button" class="entry-skip" id="skipBtn">Skip to Panel (Dev)</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========================================
+         VIEW 2: Transition
+         ======================================== -->
+    <div class="view view--transition" id="transitionView" style="display: none;">
+      <div class="transition-content">
+        <div class="transition-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <polygon points="23 7 16 12 23 17 23 7"/>
             <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
           </svg>
         </div>
-        <span class="meeting-title">Investor Panel — Series A Pitch</span>
-        <div class="timer-container">
-          <div class="timer" data-state="neutral">08:23</div>
-          <div class="pressure-bar" data-state="neutral"></div>
-        </div>
+        <p class="transition-message">The panel is ready.</p>
       </div>
-      <div class="header-right">
-        <div class="user-avatar">
-          <span>Y</span>
-        </div>
-      </div>
-    </header>
+    </div>
 
-    <!-- Main Content -->
-    <div class="main-wrapper">
-      <!-- Video Area -->
-      <main class="video-area">
-        <!-- Participant Strip -->
-        <div class="participant-strip">
-          <div class="participant" data-investor="marcus" data-state="live">
-            <div class="participant-video">
-              <div class="participant-avatar">MK</div>
-            </div>
-            <div class="participant-status status--live"></div>
-            <span class="participant-name">Marcus Kellan</span>
+    <!-- ========================================
+         VIEW 3: Panel (Video Call UI)
+         ======================================== -->
+    <div class="view view--panel" id="panelView" style="display: none;">
+      <!-- Top Header Bar (Light) -->
+      <header class="header">
+        <div class="header-left">
+          <div class="logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
           </div>
-
-          <div class="participant" data-investor="victor" data-state="live">
-            <div class="participant-video">
-              <div class="participant-avatar">VS</div>
-            </div>
-            <div class="participant-status status--live"></div>
-            <span class="participant-name">Victor Slate</span>
-          </div>
-
-          <div class="participant participant--you">
-            <div class="participant-video participant-video--you">
-              <div class="participant-avatar">YOU</div>
-            </div>
-            <div class="participant-status status--presenting"></div>
-            <span class="participant-name">You</span>
-          </div>
-
-          <div class="participant participant--out" data-investor="elena" data-state="out">
-            <div class="participant-video participant-video--out">
-              <div class="participant-avatar">EB</div>
-            </div>
-            <div class="participant-status status--out"></div>
-            <span class="participant-name">Elena Brooks</span>
-          </div>
-
-          <div class="participant" data-investor="richard" data-state="live">
-            <div class="participant-video">
-              <div class="participant-avatar">RH</div>
-            </div>
-            <div class="participant-status status--live"></div>
-            <span class="participant-name">Richard Hale</span>
-          </div>
-
-          <div class="participant participant--out" data-investor="daniel" data-state="out">
-            <div class="participant-video participant-video--out">
-              <div class="participant-avatar">DF</div>
-            </div>
-            <div class="participant-status status--out"></div>
-            <span class="participant-name">Daniel Frost</span>
+          <span class="meeting-title" id="meetingTitle">Investor Panel — Series A Pitch</span>
+          <div class="timer-container">
+            <div class="timer" data-state="neutral" id="timerDisplay">10:00</div>
+            <div class="pressure-bar" data-state="neutral" id="pressureBar"></div>
           </div>
         </div>
-
-        <!-- Featured Speaker -->
-        <div class="featured-video">
-          <div class="featured-content">
-            <div class="featured-avatar">YOU</div>
-          </div>
-          <div class="featured-name-badge">You (Founder)</div>
-          <div class="featured-caption">
-            "We're targeting a $4.2B market with 18% annual growth..."
+        <div class="header-right">
+          <div class="user-avatar">
+            <span>Y</span>
           </div>
         </div>
+      </header>
 
-        <!-- Bottom Controls -->
-        <div class="controls-bar">
-          <div class="controls-left">
-            <div class="meeting-id">
-              <span>stk-a8x2-qr9</span>
-              <button class="copy-btn" title="Copy meeting ID">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      <!-- Main Content -->
+      <div class="main-wrapper">
+        <!-- Video Area -->
+        <main class="video-area">
+          <!-- Participant Strip -->
+          <div class="participant-strip">
+            <div class="participant" data-investor="marcus" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/marcus_kellan.png" alt="Marcus Kellan">
+                <div class="participant-overlay">
+                  <span class="participant-name">Marcus Kellan</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="victor" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/victor_slate.png" alt="Victor Slate">
+                <div class="participant-overlay">
+                  <span class="participant-name">Victor Slate</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant participant--you">
+              <div class="participant-video participant-video--you">
+                <video class="participant-webcam" id="userWebcamSmall" autoplay muted playsinline></video>
+                <div class="participant-avatar" id="userAvatarSmall">YOU</div>
+                <div class="participant-overlay">
+                  <span class="participant-name">You</span>
+                  <span class="participant-badge badge--presenting">PRESENTING</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="elena" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/elena_brooks.png" alt="Elena Brooks">
+                <div class="participant-overlay">
+                  <span class="participant-name">Elena Brooks</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="richard" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/richard_hale.png" alt="Richard Hale">
+                <div class="participant-overlay">
+                  <span class="participant-name">Richard Hale</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="daniel" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/daniel_frost.png" alt="Daniel Frost">
+                <div class="participant-overlay">
+                  <span class="participant-name">Daniel Frost</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Featured Speaker -->
+          <div class="featured-video">
+            <video class="featured-webcam" id="userWebcamMain" autoplay muted playsinline></video>
+            <div class="featured-content" id="featuredAvatarContainer">
+              <div class="featured-avatar">YOU</div>
+            </div>
+            <div class="featured-name-badge">You (Founder)</div>
+            <div class="featured-caption" id="featuredCaption">
+              <span class="caption-text" id="captionText">Waiting for you to speak...</span>
+              <span class="caption-listening" id="captionListening">
+                <span class="listening-dot"></span>
+                Listening
+              </span>
+            </div>
+          </div>
+
+          <!-- Bottom Controls -->
+          <div class="controls-bar">
+            <div class="controls-left">
+              <div class="meeting-id">
+                <span>stk-a8x2-qr9</span>
+                <button class="copy-btn" title="Copy meeting ID">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="controls-center">
+              <button class="control-btn control-btn--muted" title="Unmute">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <button class="control-btn" title="Camera">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="23 7 16 12 23 17 23 7"/>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+              </button>
+              <button class="control-btn" title="Share Screen">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                  <polyline points="16 6 12 2 8 6"/>
+                  <line x1="12" y1="2" x2="12" y2="15"/>
+                </svg>
+              </button>
+              <button class="control-btn control-btn--active" title="Chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </button>
+              <button class="control-btn" title="Record">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                </svg>
+              </button>
+              <button class="control-btn" title="More">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="1"/>
+                  <circle cx="19" cy="12" r="1"/>
+                  <circle cx="5" cy="12" r="1"/>
                 </svg>
               </button>
             </div>
-          </div>
 
-          <div class="controls-center">
-            <button class="control-btn control-btn--muted" title="Unmute">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="1" y1="1" x2="23" y2="23"/>
-                <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-                <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-            </button>
-            <button class="control-btn" title="Camera">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="23 7 16 12 23 17 23 7"/>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-              </svg>
-            </button>
-            <button class="control-btn" title="Share Screen">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                <polyline points="16 6 12 2 8 6"/>
-                <line x1="12" y1="2" x2="12" y2="15"/>
-              </svg>
-            </button>
-            <button class="control-btn control-btn--active" title="Chat">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
-            </button>
-            <button class="control-btn" title="Record">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="4" fill="currentColor"/>
-              </svg>
-            </button>
-            <button class="control-btn" title="More">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <div class="controls-right">
+              <button class="end-pitch-btn" id="endPitchBtn">End Pitch</button>
+            </div>
+          </div>
+        </main>
+
+        <!-- Chat Panel -->
+        <aside class="chat-panel">
+          <div class="chat-header">
+            <span class="chat-title">Panel</span>
+            <button class="chat-menu-btn" title="More options">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="1"/>
-                <circle cx="19" cy="12" r="1"/>
-                <circle cx="5" cy="12" r="1"/>
+                <circle cx="12" cy="5" r="1"/>
+                <circle cx="12" cy="19" r="1"/>
               </svg>
             </button>
           </div>
 
-          <div class="controls-right">
-            <button class="leave-btn">Exit Panel</button>
-          </div>
-        </div>
-      </main>
-
-      <!-- Chat Panel -->
-      <aside class="chat-panel">
-        <div class="chat-header">
-          <span class="chat-title">Panel</span>
-          <button class="chat-menu-btn" title="More options">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="1"/>
-              <circle cx="12" cy="5" r="1"/>
-              <circle cx="12" cy="19" r="1"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="chat-messages">
-          <div class="message">
-            <div class="message-header">
-              <span class="message-author">Marcus Kellan</span>
-              <span class="message-time">08:41</span>
+          <div class="chat-messages" id="chatMessages">
+            <div class="message message--system">
+              <p class="message-text">The panel has begun. Good luck.</p>
             </div>
-            <p class="message-text">What's your CAC?</p>
           </div>
 
-          <div class="message message--system">
-            <p class="message-text">Elena Brooks is OUT.</p>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="Write a message..." />
+            <button class="send-btn" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
           </div>
-
-          <div class="message">
-            <div class="message-header">
-              <span class="message-author">Victor Slate</span>
-              <span class="message-time">08:38</span>
-            </div>
-            <p class="message-text">Your margin feels flimsy.</p>
-          </div>
-
-          <div class="message">
-            <div class="message-header">
-              <span class="message-author">Richard Hale</span>
-              <span class="message-time">08:35</span>
-            </div>
-            <p class="message-text">What's the wedge and why now?</p>
-          </div>
-
-          <div class="message message--system">
-            <p class="message-text">Marcus Kellan is reconsidering.</p>
-          </div>
-
-          <div class="message message--you">
-            <div class="message-header">
-              <span class="message-author">You</span>
-              <span class="message-time">08:33</span>
-            </div>
-            <p class="message-text">We've validated with 200+ enterprise pilots.</p>
-          </div>
-
-          <div class="message">
-            <div class="message-header">
-              <span class="message-author">Daniel Frost</span>
-              <span class="message-time">08:29</span>
-            </div>
-            <p class="message-text">I'm not convinced there's a real market.</p>
-          </div>
-        </div>
-
-        <div class="chat-input-area">
-          <input type="text" class="chat-input" placeholder="Write a message..." />
-          <button class="send-btn" title="Send">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
-        </div>
-      </aside>
+        </aside>
+      </div>
     </div>
   </div>
 

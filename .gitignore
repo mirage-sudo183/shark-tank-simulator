@@ -1,0 +1,8 @@
+# SSL certificates (local dev only)
+*.pem
+
+# Vercel
+.vercel
+
+# OS files
+.DS_Store
