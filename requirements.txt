@@ -1,0 +1,17 @@
+# Shark Tank Simulator - Python Dependencies
+
+# Web Framework
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Anthropic Claude API
+anthropic>=0.34.0
+
+# OpenAI Whisper for speech-to-text
+openai>=1.0.0
+
+# HTTP requests (for Eleven Labs TTS)
+requests>=2.31.0

@@ -21,7 +21,7 @@
             </svg>
           </div>
           <h1 class="entry-title">Enter the Panel</h1>
-          <p class="entry-subtitle">5 investors. 10 minutes. No second chances.</p>
+          <p class="entry-subtitle">5 investors. 3-minute pitch. No second chances.</p>
         </div>
 
         <form class="entry-form" id="entryForm">
@@ -132,7 +132,7 @@
           </div>
           <span class="meeting-title" id="meetingTitle">Investor Panel — Series A Pitch</span>
           <div class="timer-container">
-            <div class="timer" data-state="neutral" id="timerDisplay">10:00</div>
+            <div class="timer" data-state="neutral" id="timerDisplay">15:00</div>
             <div class="pressure-bar" data-state="neutral" id="pressureBar"></div>
           </div>
         </div>
@@ -242,49 +242,18 @@
             </div>
 
             <div class="controls-center">
-              <button class="control-btn control-btn--muted" title="Unmute">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="1" y1="1" x2="23" y2="23"/>
-                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-              </button>
-              <button class="control-btn" title="Camera">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="23 7 16 12 23 17 23 7"/>
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-                </svg>
-              </button>
-              <button class="control-btn" title="Share Screen">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-                  <polyline points="16 6 12 2 8 6"/>
-                  <line x1="12" y1="2" x2="12" y2="15"/>
-                </svg>
-              </button>
-              <button class="control-btn control-btn--active" title="Chat">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-              </button>
-              <button class="control-btn" title="Record">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <circle cx="12" cy="12" r="4" fill="currentColor"/>
-                </svg>
-              </button>
-              <button class="control-btn" title="More">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="1"/>
-                  <circle cx="19" cy="12" r="1"/>
-                  <circle cx="5" cy="12" r="1"/>
-                </svg>
-              </button>
+              <!-- Decorative buttons removed - only functional controls remain -->
             </div>
 
             <div class="controls-right">
+              <button class="transcript-toggle-btn" id="transcriptToggle" title="View Transcript">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </button>
               <button class="end-pitch-btn" id="endPitchBtn">End Pitch</button>
             </div>
           </div>
@@ -310,7 +279,15 @@
           </div>
 
           <div class="chat-input-area">
-            <input type="text" class="chat-input" placeholder="Write a message..." />
+            <button class="record-btn" id="recordBtn" title="Hold to record">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <input type="text" class="chat-input" id="chatInput" placeholder="Type or press mic to record..." />
             <button class="send-btn" title="Send">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="22" y1="2" x2="11" y2="13"/>
@@ -318,7 +295,60 @@
               </svg>
             </button>
           </div>
+
+          <!-- Live transcript display -->
+          <div class="chat-transcript" id="chatTranscript" style="display: none;">
+            <span class="transcript-label">You said:</span>
+            <span class="transcript-live" id="liveTranscriptText"></span>
+          </div>
         </aside>
+      </div>
+    </div>
+
+    <!-- Transcript Viewer Panel -->
+    <div class="transcript-panel" id="transcriptPanel" style="display: none;">
+      <div class="transcript-header">
+        <span class="transcript-title">Live Transcript</span>
+        <button class="transcript-close" onclick="window.toggleTranscript()">&times;</button>
+      </div>
+      <div class="transcript-content" id="transcriptContent">
+        <p class="transcript-empty">Your speech will appear here...</p>
+      </div>
+    </div>
+
+    <!-- Counter Offer Modal -->
+    <div class="modal" id="counterOfferModal" style="display: none;">
+      <div class="modal-backdrop" onclick="window.hideCounterModal()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Counter Offer</h3>
+          <button class="modal-close" onclick="window.hideCounterModal()">&times;</button>
+        </div>
+        <p class="modal-subtitle">Make a counter offer to <span id="counterSharkName">the investor</span></p>
+        <input type="hidden" id="counterOfferId" value="">
+
+        <div class="modal-form">
+          <div class="form-group">
+            <label class="form-label" for="counterAmount">Amount you want</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="counterAmount" value="500000" min="1">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="counterEquity">Equity you'll give</label>
+            <div class="input-with-suffix">
+              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="1" max="100">
+              <span class="input-suffix">%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn--cancel" onclick="window.hideCounterModal()">Cancel</button>
+          <button class="btn btn--submit" onclick="window.submitCounterOffer()">Submit Counter</button>
+        </div>
       </div>
     </div>
   </div>
