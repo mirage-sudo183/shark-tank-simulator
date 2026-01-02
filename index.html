@@ -9,10 +9,87 @@
 <body>
   <div class="app">
     <!-- ========================================
+         VIEW 0: Auth / Login
+         ======================================== -->
+    <div class="view view--auth" id="authView">
+      <div class="auth-container">
+        <div class="auth-header">
+          <div class="auth-logo">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="auth-title">Shark Tank Simulator</h1>
+          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
+        </div>
+
+        <div class="auth-content">
+          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Sign in with X (Twitter)
+          </button>
+
+          <p class="auth-note">
+            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
+          </p>
+
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+
+          <button class="auth-btn auth-btn--guest" id="guestBtn">
+            Continue as Guest
+          </button>
+          <p class="auth-guest-note">
+            Guest pitches won't appear on the leaderboard
+          </p>
+        </div>
+
+        <div class="auth-footer">
+          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10"/>
+              <path d="M18 20V4"/>
+              <path d="M6 20v-4"/>
+            </svg>
+            View Leaderboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
          VIEW 1: Entry Form
          ======================================== -->
-    <div class="view view--entry" id="entryView">
+    <div class="view view--entry" id="entryView" style="display: none;">
       <div class="entry-container">
+        <!-- User Profile Bar (shown when logged in) -->
+        <div class="user-bar" id="userBar" style="display: none;">
+          <div class="user-bar-left">
+            <img class="user-bar-avatar" id="userBarAvatar" src="" alt="User">
+            <span class="user-bar-name" id="userBarName">@username</span>
+          </div>
+          <div class="user-bar-right">
+            <button class="user-bar-btn" id="userLeaderboardBtn" title="Leaderboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20V10"/>
+                <path d="M18 20V4"/>
+                <path d="M6 20v-4"/>
+              </svg>
+            </button>
+            <button class="user-bar-btn user-bar-btn--logout" id="logoutBtn" title="Sign Out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div class="entry-header">
           <div class="entry-logo">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -351,8 +428,89 @@
         </div>
       </div>
     </div>
+
+    <!-- ========================================
+         VIEW: Leaderboard
+         ======================================== -->
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
+      <div class="leaderboard-container">
+        <div class="leaderboard-header">
+          <button class="leaderboard-back" id="leaderboardBackBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back
+          </button>
+          <h1 class="leaderboard-title">Leaderboard</h1>
+          <div class="leaderboard-tabs">
+            <button class="leaderboard-tab leaderboard-tab--active" data-tab="verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Verified
+            </button>
+            <button class="leaderboard-tab" data-tab="all">
+              All Pitches
+            </button>
+          </div>
+        </div>
+
+        <div class="leaderboard-content">
+          <!-- User's rank card (if logged in) -->
+          <div class="leaderboard-user-card" id="leaderboardUserCard" style="display: none;">
+            <span class="user-card-rank" id="userCardRank">#--</span>
+            <img class="user-card-avatar" id="userCardAvatar" src="" alt="You">
+            <div class="user-card-info">
+              <span class="user-card-name" id="userCardName">Your Best</span>
+              <span class="user-card-company" id="userCardCompany">No deals yet</span>
+            </div>
+            <span class="user-card-amount" id="userCardAmount">$0</span>
+          </div>
+
+          <!-- Leaderboard list -->
+          <div class="leaderboard-list" id="leaderboardList">
+            <div class="leaderboard-loading">
+              <div class="loading-spinner"></div>
+              Loading leaderboard...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <!-- Load Firebase config from gitignored file first -->
+  <script src="firebase-env.js"></script>
+  <script type="module">
+    import {
+      signInWithTwitter,
+      signOutUser,
+      onAuthChange,
+      getCurrentUser,
+      getIdToken,
+      savePitchResult,
+      getLeaderboard,
+      getUserBestPitch
+    } from './firebase-config.js';
+
+    // Expose Firebase functions to window for app.js
+    window.firebaseAuth = {
+      signInWithTwitter,
+      signOutUser,
+      onAuthChange,
+      getCurrentUser,
+      getIdToken,
+      savePitchResult,
+      getLeaderboard,
+      getUserBestPitch
+    };
+
+    // Dispatch event when Firebase is ready
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
   <script src="app.js"></script>
 </body>
 </html>

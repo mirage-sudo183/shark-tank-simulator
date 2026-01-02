@@ -9,6 +9,7 @@
 
 # Environment variables (contains API keys)
 .env
+firebase-env.js
 
 # Python
 __pycache__/
@@ -22,3 +23,7 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Claude
+
+.claude/
