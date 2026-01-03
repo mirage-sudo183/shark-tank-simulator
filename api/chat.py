@@ -14,44 +14,51 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
+# Shark IDs (matches session.py and Flask server)
+SHARK_IDS = ['marcus_kellan', 'victor_slate', 'elena_brooks', 'richard_hale', 'daniel_frost']
+
 # Shark personas
 SHARK_PERSONAS = {
-    'marcus': {
+    'marcus_kellan': {
         'name': 'Marcus Kellan',
         'style': 'Tech billionaire. Bold, direct, hates royalty deals. Asks about CAC, LTV, and scalability.',
         'catchphrase': "What's your customer acquisition cost?"
     },
-    'victor': {
+    'victor_slate': {
         'name': 'Victor Slate',
         'style': 'Mr. Wonderful. Cold, calculating, loves royalty deals. All about the numbers and returns.',
         'catchphrase': "Here's the thing..."
     },
-    'elena': {
+    'elena_brooks': {
         'name': 'Elena Brooks',
         'style': 'Queen of Retail. Warm, product-focused, wants to see demos and patents.',
         'catchphrase': "Is this patented?"
     },
-    'richard': {
+    'richard_hale': {
         'name': 'Richard Hale',
         'style': 'Adventurous billionaire. Focuses on brand, experience, and customer journey.',
         'catchphrase': "What's the customer experience like?"
     },
-    'daniel': {
+    'daniel_frost': {
         'name': 'Daniel Frost',
         'style': 'Tech entrepreneur. Empathetic, encouraging, connects emotionally with founders.',
         'catchphrase': "Tell me your story."
     }
 }
 
+
 def generate_shark_response(shark_id, pitch_data, user_message=None, context=None):
     """Generate a shark response using Claude API."""
 
+    if shark_id not in SHARK_PERSONAS:
+        shark_id = 'marcus_kellan'  # Default fallback
+
     if not HAS_ANTHROPIC:
-        return f"[{SHARK_PERSONAS[shark_id]['name']}]: Interesting pitch! Tell me more about your business model."
+        return f"Interesting pitch! Tell me more about your business model."
 
     api_key = os.environ.get('ANTHROPIC_API_KEY')
     if not api_key:
-        return f"[{SHARK_PERSONAS[shark_id]['name']}]: {SHARK_PERSONAS[shark_id]['catchphrase']}"
+        return f"{SHARK_PERSONAS[shark_id]['catchphrase']}"
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
@@ -103,14 +110,11 @@ class handler(BaseHTTPRequestHandler):
         pitch_data = data.get('pitchData', {})
         user_message = data.get('message', '')
         context = data.get('context', '')
-
-        # Pick a shark to respond (rotate or random)
-        shark_ids = ['marcus', 'victor', 'elena', 'richard', 'daniel']
         last_shark = data.get('lastShark', '')
 
         # Pick different shark than last one
-        available = [s for s in shark_ids if s != last_shark]
-        shark_id = random.choice(available) if available else random.choice(shark_ids)
+        available = [s for s in SHARK_IDS if s != last_shark]
+        shark_id = random.choice(available) if available else random.choice(SHARK_IDS)
 
         # Generate response
         response_text = generate_shark_response(shark_id, pitch_data, user_message, context)
@@ -124,13 +128,16 @@ class handler(BaseHTTPRequestHandler):
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(json.dumps(response).encode())
 
     def do_OPTIONS(self):
         self.send_response(200)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def _send_cors_headers(self):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
