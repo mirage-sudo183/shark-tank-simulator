@@ -10,6 +10,7 @@
 # Environment variables (contains API keys)
 .env
 firebase-env.js
+secrets/
 
 # Python
 __pycache__/
