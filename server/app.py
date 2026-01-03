@@ -41,15 +41,7 @@ load_dotenv()
 app = Flask(__name__, static_folder='..', static_url_path='')
 
 # CORS configuration - allow frontend domains
-CORS(app, origins=[
-    "http://localhost:*",
-    "https://localhost:*",
-    "https://*.vercel.app",
-    "https://shark-tank-simulator.vercel.app",
-    "https://*.up.railway.app",
-    # Add your custom domain here when ready
-    # "https://sharktanksimulator.com",
-], supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Initialize managers
 session_manager = SessionManager()
