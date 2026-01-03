@@ -18,7 +18,14 @@ from session import SessionManager
 from sharks import SharkManager, SHARK_IDS
 from ai_client import AIClient
 from tts_client import TTSClient
-from firebase_admin_init import initialize_firebase, optional_auth
+from firebase_admin_init import initialize_firebase, optional_auth, require_auth
+
+# Verification modules
+from verification.defillama import search_protocols, verify_protocol_ownership
+from verification.trustmrr import verify_mrr_ownership
+
+# Rate limiting
+from rate_limiter import rate_limiter, rate_limit
 
 # OpenAI for Whisper transcription
 try:
@@ -107,10 +114,12 @@ def static_files(path):
 
 @app.route('/api/session/start', methods=['POST'])
 @optional_auth
+@rate_limit
 def start_session():
     """Initialize a new pitch session."""
     data = request.json
     pitch_data = data.get('pitchData', {})
+    verification = data.get('verification')
 
     # Extract user info if authenticated
     user_id = None
@@ -120,7 +129,7 @@ def start_session():
         if hasattr(request, 'user_data') and request.user_data:
             twitter_handle = request.user_data.get('twitterHandle')
 
-    # Create session with user info
+    # Create session with user info and verification
     session_id = session_manager.create_session(pitch_data, user_id=user_id, twitter_handle=twitter_handle)
 
     # Initialize shark states with confidence scores
@@ -802,6 +811,162 @@ def transcribe_status():
 
 
 # =============================================================================
+# Verification Endpoints
+# =============================================================================
+
+@app.route('/api/verify/defi/search', methods=['GET'])
+def search_defi_protocols():
+    """Search DefiLlama for protocols by name."""
+    query = request.args.get('q', '')
+    if not query or len(query) < 2:
+        return jsonify({'error': 'Query too short', 'results': []}), 400
+
+    results = search_protocols(query)
+    return jsonify({'results': results})
+
+
+@app.route('/api/verify/defi', methods=['POST'])
+@require_auth
+def verify_defi_protocol():
+    """
+    Verify user owns a DeFi protocol via Twitter match.
+    Requires authentication.
+    """
+    data = request.json
+    protocol_slug = data.get('protocolSlug')
+
+    if not protocol_slug:
+        return jsonify({'error': 'Protocol slug required'}), 400
+
+    # Get user's Twitter handle
+    twitter_handle = None
+    if request.user_data:
+        twitter_handle = request.user_data.get('twitterHandle')
+
+    if not twitter_handle:
+        return jsonify({
+            'error': 'Twitter handle not found. Please sign in with Twitter.',
+            'verified': False
+        }), 400
+
+    # Verify ownership
+    result = verify_protocol_ownership(twitter_handle, protocol_slug)
+
+    # If verified, save to user profile
+    if result.get('verified'):
+        from firebase_admin_init import update_user_verification
+        try:
+            update_user_verification(request.user['uid'], 'defi', {
+                'protocol': result.get('protocol'),
+                'metrics': result.get('metrics'),
+                'verifiedAt': int(__import__('time').time() * 1000)
+            })
+        except Exception as e:
+            print(f"[Verification] Failed to save verification: {e}")
+
+    return jsonify(result)
+
+
+@app.route('/api/verify/trustmrr', methods=['POST'])
+@require_auth
+def verify_trustmrr_profile():
+    """
+    Verify user owns a TrustMRR profile via Twitter match.
+    Requires authentication.
+    """
+    data = request.json
+    profile_url = data.get('profileUrl')
+
+    if not profile_url:
+        return jsonify({'error': 'TrustMRR profile URL required'}), 400
+
+    # Get user's Twitter handle
+    twitter_handle = None
+    if request.user_data:
+        twitter_handle = request.user_data.get('twitterHandle')
+
+    if not twitter_handle:
+        return jsonify({
+            'error': 'Twitter handle not found. Please sign in with Twitter.',
+            'verified': False
+        }), 400
+
+    # Verify ownership
+    result = verify_mrr_ownership(twitter_handle, profile_url)
+
+    # If verified, save to user profile
+    if result.get('verified'):
+        from firebase_admin_init import update_user_verification
+        try:
+            update_user_verification(request.user['uid'], 'trustmrr', {
+                'profile': result.get('profile'),
+                'metrics': result.get('metrics'),
+                'verifiedAt': int(__import__('time').time() * 1000)
+            })
+        except Exception as e:
+            print(f"[Verification] Failed to save verification: {e}")
+
+    return jsonify(result)
+
+
+@app.route('/api/verify/status', methods=['GET'])
+@require_auth
+def get_verification_status():
+    """Get current user's verification status."""
+    verifications = {}
+    if request.user_data:
+        verifications = request.user_data.get('verifications', {})
+
+    return jsonify({
+        'verified': bool(verifications),
+        'verifications': verifications
+    })
+
+
+# =============================================================================
+# Leaderboard Endpoints
+# =============================================================================
+
+@app.route('/api/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Get leaderboard entries."""
+    from firebase_admin_init import get_leaderboard_from_firestore
+
+    verified_only = request.args.get('verified', 'true').lower() == 'true'
+    limit_count = min(int(request.args.get('limit', 50)), 100)
+
+    entries = get_leaderboard_from_firestore(verified_only=verified_only, limit_count=limit_count)
+    return jsonify({'entries': entries})
+
+
+@app.route('/api/leaderboard/user/<user_id>', methods=['GET'])
+def get_user_leaderboard_entry(user_id):
+    """Get a specific user's best pitch."""
+    from firebase_admin_init import get_user_pitches
+
+    pitches = get_user_pitches(user_id, limit_count=1)
+    if pitches:
+        return jsonify({'entry': pitches[0]})
+    return jsonify({'entry': None})
+
+
+# =============================================================================
+# Rate Limit Status
+# =============================================================================
+
+@app.route('/api/rate-limit/status', methods=['GET'])
+@optional_auth
+def get_rate_limit_status():
+    """Get current user's rate limit status."""
+    user_id = None
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+
+    stats = rate_limiter.get_user_stats(user_id)
+    return jsonify(stats)
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
@@ -818,6 +983,6 @@ if __name__ == '__main__':
         print("Starting Flask server with HTTPS on port 8443...")
         app.run(host='0.0.0.0', port=8443, ssl_context=context, debug=True, threaded=True)
     else:
-        print("SSL certificates not found. Starting on HTTP port 5000...")
+        print("SSL certificates not found. Starting on HTTP port 5001...")
         print("Note: Speech recognition requires HTTPS.")
-        app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+        app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)

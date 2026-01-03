@@ -54,8 +54,26 @@ async function signInWithTwitter() {
     const user = result.user;
 
     // Get Twitter handle from provider data
+    // Twitter stores username in 'uid' field of providerData (e.g., "12345678")
+    // and screen name can be extracted from the credential or reloadUserInfo
     const twitterData = user.providerData.find(p => p.providerId === 'twitter.com');
-    const twitterHandle = twitterData?.displayName || user.displayName || 'unknown';
+
+    // Try to get the actual Twitter username (screen_name)
+    // Firebase stores it in reloadUserInfo.screenName after auth
+    let twitterHandle = 'unknown';
+    const additionalInfo = result._tokenResponse;
+
+    if (additionalInfo && additionalInfo.screenName) {
+      twitterHandle = additionalInfo.screenName;
+    } else if (additionalInfo && additionalInfo.displayName) {
+      // Some versions use displayName in tokenResponse
+      twitterHandle = additionalInfo.displayName;
+    } else if (twitterData?.uid) {
+      // The uid in providerData is actually the Twitter username for Twitter provider
+      twitterHandle = twitterData.uid;
+    } else {
+      twitterHandle = user.displayName || 'unknown';
+    }
 
     // Get Twitter user ID from the credential
     const credential = TwitterAuthProvider.credentialFromResult(result);
@@ -190,29 +208,28 @@ async function savePitchResult(pitchData, outcome, verification = { type: 'unver
  * @param {number} limitCount - Max entries to return
  */
 async function getLeaderboard(type = 'verified', limitCount = 50) {
-  let q;
-
-  if (type === 'verified') {
-    q = query(
-      collection(db, 'pitches'),
-      where('outcome.result', '==', 'deal'),
-      where('verification.type', '!=', 'unverified'),
-      orderBy('outcome.dealAmount', 'desc'),
-      limit(limitCount)
-    );
-  } else {
-    q = query(
-      collection(db, 'pitches'),
-      where('outcome.result', '==', 'deal'),
-      orderBy('outcome.dealAmount', 'desc'),
-      limit(limitCount)
-    );
-  }
+  // Fetch all deals, then filter and sort client-side
+  // This avoids needing composite indexes in Firestore
+  const q = query(
+    collection(db, 'pitches'),
+    where('outcome.result', '==', 'deal')
+  );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc, index) => ({
+  let results = snapshot.docs.map(doc => doc.data());
+
+  // Filter by verification type if needed
+  if (type === 'verified') {
+    results = results.filter(p => p.verification?.type !== 'unverified');
+  }
+
+  // Sort by deal amount descending
+  results.sort((a, b) => (b.outcome?.dealAmount || 0) - (a.outcome?.dealAmount || 0));
+
+  // Limit and add rank
+  return results.slice(0, limitCount).map((data, index) => ({
     rank: index + 1,
-    ...doc.data()
+    ...data
   }));
 }
 

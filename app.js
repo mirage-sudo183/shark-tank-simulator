@@ -42,6 +42,51 @@
   // Message deduplication
   let lastMessageIds = new Set();
 
+  // Demo mode flag
+  let isDemoMode = false;
+
+  // ========================================
+  // Demo Mode Script (Pre-defined pitch for guests)
+  // ========================================
+  const DEMO_SCRIPT = {
+    pitchData: {
+      companyName: "FreshBite",
+      amountRaising: 500000,
+      equityPercent: 10,
+      companyDescription: "A meal kit delivery service that uses AI to personalize recipes based on your dietary preferences and what's already in your fridge.",
+      proofType: 'customers',
+      proofValue: '2,500 active subscribers'
+    },
+    conversation: [
+      // Initial reactions after "pitch" phase
+      { delay: 3000, shark: "marcus_kellan", type: "thinking" },
+      { delay: 4500, shark: "marcus_kellan", type: "message", text: "I love the concept. How do you handle the logistics of ingredient sourcing? That's usually where meal kit companies struggle." },
+      { delay: 8000, shark: "elena_brooks", type: "message", text: "The AI personalization angle is interesting. What's your customer acquisition cost, and how long does it take to recoup that?" },
+      { delay: 12000, shark: "victor_slate", type: "thinking" },
+      { delay: 14000, shark: "victor_slate", type: "message", text: "I've seen a lot of meal kit companies come and go. The churn in this industry is brutal. What's your retention rate after 6 months?" },
+      { delay: 18000, shark: "daniel_frost", type: "message", text: "I'm curious about your technology moat. What stops HelloFresh from just copying your AI feature tomorrow?" },
+      // Victor goes out
+      { delay: 23000, shark: "victor_slate", type: "message", text: "Look, I appreciate the hustle, but this market is just too crowded for my taste. I'm out." },
+      { delay: 24000, shark: "victor_slate", type: "out" },
+      // Richard shows interest
+      { delay: 28000, shark: "richard_hale", type: "message", text: "I actually like this. The fridge integration is clever - it reduces waste and increases convenience. That's a real differentiator." },
+      // Elena makes an offer
+      { delay: 33000, shark: "elena_brooks", type: "message", text: "You know what? I'm going to take a chance here. I'll give you the $500,000, but I want 20% equity." },
+      { delay: 34000, shark: "elena_brooks", type: "offer", amount: 500000, equity: 20 },
+      // Demo ends
+      { delay: 40000, type: "demo_end" }
+    ]
+  };
+
+  // Shark name mapping for demo
+  const SHARK_NAMES = {
+    'marcus_kellan': 'Marcus Kellan',
+    'elena_brooks': 'Elena Brooks',
+    'victor_slate': 'Victor Slate',
+    'daniel_frost': 'Daniel Frost',
+    'richard_hale': 'Richard Hale'
+  };
+
   // ========================================
   // Auth State
   // ========================================
@@ -112,7 +157,7 @@
       });
     }
 
-    // Logout button
+    // Logout button (entry view)
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
@@ -120,10 +165,34 @@
           await window.firebaseAuth.signOutUser();
           currentUser = null;
           isGuest = false;
+          updateAuthUI();
           showView('authView');
         } catch (error) {
           console.error('Logout failed:', error);
         }
+      });
+    }
+
+    // Logout button (auth view)
+    const authLogoutBtn = document.getElementById('authLogoutBtn');
+    if (authLogoutBtn) {
+      authLogoutBtn.addEventListener('click', async () => {
+        try {
+          await window.firebaseAuth.signOutUser();
+          currentUser = null;
+          isGuest = false;
+          updateAuthUI();
+        } catch (error) {
+          console.error('Logout failed:', error);
+        }
+      });
+    }
+
+    // Continue to form button (auth view when logged in)
+    const continueToFormBtn = document.getElementById('continueToFormBtn');
+    if (continueToFormBtn) {
+      continueToFormBtn.addEventListener('click', () => {
+        showView('entryView');
       });
     }
 
@@ -149,6 +218,20 @@
       });
     }
 
+    // Back to Auth button (entry view)
+    const backToAuthBtn = document.getElementById('backToAuthBtn');
+    if (backToAuthBtn) {
+      backToAuthBtn.addEventListener('click', async () => {
+        // If logged in, sign out first
+        if (currentUser && window.firebaseAuth) {
+          await window.firebaseAuth.signOutUser();
+          currentUser = null;
+        }
+        isGuest = false;
+        showView('authView');
+      });
+    }
+
     // Leaderboard tabs
     document.querySelectorAll('.leaderboard-tab').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -164,16 +247,52 @@
     const userBarAvatar = document.getElementById('userBarAvatar');
     const userBarName = document.getElementById('userBarName');
 
-    if (currentUser && userBar) {
-      userBar.style.display = 'flex';
-      if (userBarAvatar) {
-        userBarAvatar.src = currentUser.photoURL || 'https://via.placeholder.com/32';
+    // Auth view elements
+    const authLoginContent = document.getElementById('authLoginContent');
+    const authLoggedInContent = document.getElementById('authLoggedInContent');
+    const authUserAvatar = document.getElementById('authUserAvatar');
+    const authUserName = document.getElementById('authUserName');
+
+    if (currentUser) {
+      // Entry view user bar
+      if (userBar) {
+        userBar.style.display = 'flex';
+        if (userBarAvatar) {
+          userBarAvatar.src = currentUser.photoURL || 'https://via.placeholder.com/32';
+        }
+        if (userBarName) {
+          userBarName.textContent = currentUser.twitterHandle ? `@${currentUser.twitterHandle}` : currentUser.displayName;
+        }
       }
-      if (userBarName) {
-        userBarName.textContent = currentUser.twitterHandle ? `@${currentUser.twitterHandle}` : currentUser.displayName;
+
+      // Auth view logged-in state
+      if (authLoginContent) authLoginContent.style.display = 'none';
+      if (authLoggedInContent) {
+        authLoggedInContent.style.display = 'flex';
+        if (authUserAvatar) {
+          authUserAvatar.src = currentUser.photoURL || 'https://via.placeholder.com/48';
+        }
+        if (authUserName) {
+          authUserName.textContent = currentUser.twitterHandle ? `@${currentUser.twitterHandle}` : currentUser.displayName;
+        }
       }
-    } else if (userBar) {
-      userBar.style.display = isGuest ? 'none' : 'none';
+    } else {
+      // Not logged in
+      if (userBar) userBar.style.display = 'none';
+      if (authLoginContent) authLoginContent.style.display = 'block';
+      if (authLoggedInContent) authLoggedInContent.style.display = 'none';
+
+      // Reset Twitter login button to original state
+      const twitterLoginBtn = document.getElementById('twitterLoginBtn');
+      if (twitterLoginBtn) {
+        twitterLoginBtn.disabled = false;
+        twitterLoginBtn.innerHTML = `
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          Sign in with X (Twitter)
+        `;
+      }
     }
 
     // Update leaderboard user card
@@ -216,27 +335,65 @@
         return;
       }
 
-      listContainer.innerHTML = entries.map((entry, index) => `
+      listContainer.innerHTML = entries.map((entry, index) => {
+        const pitch = entry.pitchData || {};
+        const outcome = entry.outcome || {};
+        const verification = entry.verification || {};
+        const metrics = verification.metrics || {};
+        const protocol = verification.protocol || {};
+
+        // Format the deal terms comparison
+        const askAmount = pitch.amountRaising ? `$${formatNumber(pitch.amountRaising)}` : '';
+        const askEquity = pitch.equityPercent ? `${pitch.equityPercent}%` : '';
+        const gotAmount = outcome.dealAmount ? `$${formatNumber(outcome.dealAmount)}` : '';
+        const gotEquity = outcome.dealEquity ? `${outcome.dealEquity}%` : '';
+
+        // Format verification metrics
+        let metricsDisplay = '';
+        if (metrics.primaryLabel && metrics.primaryValue) {
+          metricsDisplay = `${metrics.primaryLabel}: $${formatNumber(metrics.primaryValue)}`;
+        }
+
+        // Truncate description
+        const description = pitch.description || pitch.companyDescription || '';
+        const shortDesc = description.length > 80 ? description.substring(0, 80) + '...' : description;
+
+        // Get logo from verification (DefiLlama or TrustMRR)
+        const logoUrl = protocol.logo || verification.logo || null;
+
+        return `
         <div class="leaderboard-entry ${index < 3 ? 'leaderboard-entry--top' : ''}">
-          <span class="entry-rank">#${entry.rank}</span>
-          <div class="entry-info">
-            <span class="entry-name">@${entry.userTwitterHandle || 'anonymous'}</span>
-            <span class="entry-company">${entry.pitchData?.companyName || 'Unknown'}</span>
+          <div class="entry-header">
+            <span class="entry-rank">#${entry.rank}</span>
+            ${logoUrl ? `
+              <img src="${logoUrl}" alt="${pitch.companyName || 'Protocol'}" class="entry-logo" onerror="this.style.display='none'">
+            ` : ''}
+            <span class="entry-name">${entry.userTwitterHandle || '@anonymous'}</span>
+            <div class="entry-deal-amount">
+              <span class="entry-amount">$${formatNumber(outcome.dealAmount || 0)}</span>
+              ${verification.type !== 'unverified' ? `
+                <span class="entry-verified" title="${verification.level || 'Verified'}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                </span>
+              ` : ''}
+            </div>
           </div>
-          <div class="entry-deal">
-            <span class="entry-amount">$${formatNumber(entry.outcome?.dealAmount || 0)}</span>
-            <span class="entry-shark">${entry.outcome?.dealShark || ''}</span>
+          <div class="entry-details">
+            <span class="entry-company">${pitch.companyName || 'Unknown'}</span>
+            ${shortDesc ? `<span class="entry-description">"${shortDesc}"</span>` : ''}
+            ${askAmount && gotAmount ? `
+              <span class="entry-terms">Asked: ${askAmount} for ${askEquity} → Got: ${gotAmount} for ${gotEquity}</span>
+            ` : ''}
+            <div class="entry-meta">
+              ${outcome.shark ? `<span class="entry-shark">Shark: ${outcome.shark}</span>` : ''}
+              ${metricsDisplay ? `<span class="entry-metrics">${metricsDisplay}</span>` : ''}
+            </div>
           </div>
-          ${entry.verification?.type !== 'unverified' ? `
-            <span class="entry-verified" title="Verified">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </span>
-          ` : ''}
         </div>
-      `).join('');
+      `}).join('');
 
     } catch (error) {
       console.error('Failed to load leaderboard:', error);
@@ -293,6 +450,282 @@
     document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
     const view = document.getElementById(viewId);
     if (view) view.style.display = 'flex';
+
+    // Update auth UI when switching views (ensures user bar is visible)
+    updateAuthUI();
+  }
+
+  // ========================================
+  // Verification
+  // ========================================
+  let currentVerification = null;
+  let defiSearchTimeout = null;
+
+  function updateVerificationUI(proofType) {
+    const verificationSection = document.getElementById('verificationSection');
+    if (!verificationSection) return;
+
+    // Only show verification for logged-in users with revenue or users proof
+    if (currentUser && (proofType === 'revenue' || proofType === 'users')) {
+      verificationSection.style.display = 'block';
+    } else {
+      verificationSection.style.display = 'none';
+    }
+  }
+
+  function initVerification() {
+    // DefiLlama verification
+    const verifyDefiBtn = document.getElementById('verifyDefiBtn');
+    const defiModal = document.getElementById('defiModal');
+    const closeDefiModal = document.getElementById('closeDefiModal');
+    const defiSearchInput = document.getElementById('defiSearchInput');
+    const defiSearchResults = document.getElementById('defiSearchResults');
+    const defiSearchSpinner = document.getElementById('defiSearchSpinner');
+
+    if (verifyDefiBtn && defiModal) {
+      verifyDefiBtn.addEventListener('click', () => {
+        defiModal.style.display = 'flex';
+        defiSearchInput.value = '';
+        defiSearchResults.innerHTML = '';
+        defiSearchInput.focus();
+      });
+
+      closeDefiModal.addEventListener('click', () => {
+        defiModal.style.display = 'none';
+      });
+
+      defiModal.addEventListener('click', (e) => {
+        if (e.target === defiModal) {
+          defiModal.style.display = 'none';
+        }
+      });
+
+      // Search with debounce
+      defiSearchInput.addEventListener('input', () => {
+        clearTimeout(defiSearchTimeout);
+        const query = defiSearchInput.value.trim();
+
+        if (query.length < 2) {
+          defiSearchResults.innerHTML = '';
+          return;
+        }
+
+        defiSearchSpinner.style.display = 'block';
+
+        defiSearchTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch(`${API_BASE}/api/verify/defi/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            defiSearchSpinner.style.display = 'none';
+
+            if (data.results && data.results.length > 0) {
+              defiSearchResults.innerHTML = data.results.map(protocol => `
+                <div class="search-result-item" data-slug="${protocol.id}">
+                  <img class="search-result-logo" src="${protocol.logo || 'https://via.placeholder.com/36'}" alt="${protocol.name}">
+                  <div class="search-result-info">
+                    <span class="search-result-name">${protocol.name}</span>
+                    <span class="search-result-meta">${protocol.category || ''} ${protocol.twitter ? '• @' + protocol.twitter : ''}</span>
+                  </div>
+                  <span class="search-result-tvl">${formatTVL(protocol.tvl)}</span>
+                </div>
+              `).join('');
+
+              // Add click handlers
+              defiSearchResults.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', () => verifyDefiProtocol(item.dataset.slug));
+              });
+            } else {
+              defiSearchResults.innerHTML = '<p style="color: #71717a; text-align: center;">No protocols found</p>';
+            }
+          } catch (error) {
+            console.error('DeFi search error:', error);
+            defiSearchSpinner.style.display = 'none';
+            defiSearchResults.innerHTML = '<p style="color: #ef4444; text-align: center;">Search failed</p>';
+          }
+        }, 300);
+      });
+    }
+
+    // TrustMRR verification
+    const verifyTrustMRRBtn = document.getElementById('verifyTrustMRRBtn');
+    const trustmrrModal = document.getElementById('trustmrrModal');
+    const closeTrustMRRModal = document.getElementById('closeTrustMRRModal');
+    const trustmrrUrlInput = document.getElementById('trustmrrUrlInput');
+    const verifyTrustMRRSubmit = document.getElementById('verifyTrustMRRSubmit');
+    const trustmrrResult = document.getElementById('trustmrrResult');
+
+    if (verifyTrustMRRBtn && trustmrrModal) {
+      verifyTrustMRRBtn.addEventListener('click', () => {
+        trustmrrModal.style.display = 'flex';
+        trustmrrUrlInput.value = '';
+        trustmrrResult.style.display = 'none';
+        trustmrrUrlInput.focus();
+      });
+
+      closeTrustMRRModal.addEventListener('click', () => {
+        trustmrrModal.style.display = 'none';
+      });
+
+      trustmrrModal.addEventListener('click', (e) => {
+        if (e.target === trustmrrModal) {
+          trustmrrModal.style.display = 'none';
+        }
+      });
+
+      verifyTrustMRRSubmit.addEventListener('click', () => verifyTrustMRRProfile());
+    }
+  }
+
+  async function verifyDefiProtocol(protocolSlug) {
+    const defiModal = document.getElementById('defiModal');
+    const verificationStatus = document.getElementById('verificationStatus');
+    const verificationText = document.getElementById('verificationText');
+    const verificationDetails = document.getElementById('verificationDetails');
+
+    try {
+      const token = await window.firebaseAuth.getIdToken();
+      const response = await fetch(`${API_BASE}/api/verify/defi`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ protocolSlug })
+      });
+
+      const result = await response.json();
+
+      defiModal.style.display = 'none';
+
+      // Handle different verification levels
+      const level = result.level;
+
+      if (level === 'verified' || level === 'followed' || level === 'claimed') {
+        currentVerification = {
+          type: 'defi',
+          source: 'defillama',
+          ...result
+        };
+
+        // Set verification badge based on level
+        let badgeText = '';
+        let badgeClass = '';
+
+        if (level === 'verified') {
+          badgeText = '✅ Verified via DefiLlama';
+          badgeClass = 'verification-verified';
+        } else if (level === 'followed') {
+          badgeText = '🔗 Team Verified via DefiLlama';
+          badgeClass = 'verification-followed';
+        } else {
+          badgeText = '⚠️ Claimed (Unverified)';
+          badgeClass = 'verification-claimed';
+        }
+
+        // Display primary metric (fees first, then TVL)
+        const metrics = result.metrics || {};
+        let metricDisplay = '';
+        if (metrics.primaryLabel && metrics.primaryValue > 0) {
+          metricDisplay = `${metrics.primaryLabel}: ${formatTVL(metrics.primaryValue)}`;
+        } else if (metrics.tvl > 0) {
+          metricDisplay = `TVL: ${formatTVL(metrics.tvl)}`;
+        }
+
+        verificationText.textContent = badgeText;
+        verificationDetails.textContent = `${result.protocol?.name}${metricDisplay ? ' • ' + metricDisplay : ''}`;
+        verificationStatus.style.display = 'flex';
+        verificationStatus.className = `verification-status ${badgeClass}`;
+
+        // Hide verification options
+        document.querySelector('.verification-options').style.display = 'none';
+
+        // Show confirmation message
+        if (level === 'claimed') {
+          alert(`${result.message}\n\nYour pitch will appear in the Unverified leaderboard.`);
+        } else {
+          alert(`${result.message}\n\nYour pitch will appear in the Verified leaderboard!`);
+        }
+      } else if (level === 'no_metrics') {
+        // Protocol exists but has no revenue/TVL - cannot claim
+        alert(`${result.message}\n\nPlease select a protocol with verifiable fees or TVL data.`);
+      } else {
+        alert(result.message || 'Verification failed. Protocol not found.');
+      }
+    } catch (error) {
+      console.error('DeFi verification error:', error);
+      alert('Verification failed. Please try again.');
+    }
+  }
+
+  async function verifyTrustMRRProfile() {
+    const trustmrrModal = document.getElementById('trustmrrModal');
+    const trustmrrUrlInput = document.getElementById('trustmrrUrlInput');
+    const trustmrrResult = document.getElementById('trustmrrResult');
+    const verificationStatus = document.getElementById('verificationStatus');
+    const verificationText = document.getElementById('verificationText');
+    const verificationDetails = document.getElementById('verificationDetails');
+
+    const profileUrl = trustmrrUrlInput.value.trim();
+    if (!profileUrl) {
+      trustmrrResult.textContent = 'Please enter a TrustMRR profile URL';
+      trustmrrResult.className = 'verification-result error';
+      trustmrrResult.style.display = 'block';
+      return;
+    }
+
+    try {
+      const token = await window.firebaseAuth.getIdToken();
+      const response = await fetch(`${API_BASE}/api/verify/trustmrr`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ profileUrl })
+      });
+
+      const result = await response.json();
+
+      if (result.verified) {
+        currentVerification = {
+          type: 'trustmrr',
+          source: 'trustmrr',
+          ...result
+        };
+        trustmrrModal.style.display = 'none';
+        verificationText.textContent = 'Verified via TrustMRR';
+        verificationDetails.textContent = `${result.profile?.company_name || 'Company'} • MRR: ${result.metrics?.mrr_display || formatMRR(result.metrics?.mrr)}`;
+        verificationStatus.style.display = 'flex';
+
+        // Hide verification options
+        document.querySelector('.verification-options').style.display = 'none';
+      } else {
+        trustmrrResult.textContent = result.message || 'Verification failed';
+        trustmrrResult.className = `verification-result ${result.level === 'not_found' ? 'error' : 'warning'}`;
+        trustmrrResult.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('TrustMRR verification error:', error);
+      trustmrrResult.textContent = 'Verification failed. Please try again.';
+      trustmrrResult.className = 'verification-result error';
+      trustmrrResult.style.display = 'block';
+    }
+  }
+
+  function formatTVL(tvl) {
+    if (!tvl || typeof tvl !== 'number') return '$0';
+    if (tvl >= 1e9) return `$${(tvl / 1e9).toFixed(2)}B`;
+    if (tvl >= 1e6) return `$${(tvl / 1e6).toFixed(2)}M`;
+    if (tvl >= 1e3) return `$${(tvl / 1e3).toFixed(1)}K`;
+    return `$${Math.round(tvl)}`;
+  }
+
+  function formatMRR(mrr) {
+    if (!mrr) return '$0';
+    if (mrr >= 1e6) return `$${(mrr / 1e6).toFixed(2)}M`;
+    if (mrr >= 1e3) return `$${(mrr / 1e3).toFixed(1)}K`;
+    return `$${mrr.toFixed(0)}`;
   }
 
   // ========================================
@@ -330,14 +763,14 @@
     if (proofType && proofValueGroup) {
       proofType.addEventListener('change', () => {
         const value = proofType.value;
-        
+
         if (value === 'idea') {
           proofValueGroup.style.display = 'none';
           proofValue.removeAttribute('required');
         } else {
           proofValueGroup.style.display = 'flex';
           proofValue.setAttribute('required', '');
-          
+
           // Update label and prefix based on type
           switch (value) {
             case 'revenue':
@@ -357,8 +790,14 @@
               break;
           }
         }
+
+        // Show verification section for logged in users with revenue/users
+        updateVerificationUI(value);
       });
     }
+
+    // Initialize verification UI
+    initVerification();
 
     // Form submission
     form.addEventListener('submit', async (e) => {
@@ -376,18 +815,48 @@
         expectedPushback: form.expectedPushback?.value || null
       };
 
-      // Store for later use
+      // Store for later use (including verification)
       window.pitchData = pitchData;
+      window.pitchVerification = currentVerification;
 
       // Show transition
       showView('transitionView');
+
+      // DEMO MODE: Guests get a pre-scripted demo instead of real AI sharks
+      if (isGuest) {
+        isDemoMode = true;
+        // Use demo pitch data instead of user input
+        pitchData = { ...DEMO_SCRIPT.pitchData };
+        window.pitchData = pitchData;
+
+        // After transition, show demo panel (no backend calls)
+        setTimeout(() => {
+          showView('panelView');
+          initDemoPanel();
+        }, 2500);
+        return;
+      }
+
+      // AUTHENTICATED USERS: Real AI shark experience
+      isDemoMode = false;
+
+      // Build headers with auth token if available
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentUser && window.firebaseAuth) {
+        try {
+          const token = await window.firebaseAuth.getIdToken();
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+        } catch (e) {
+          console.log('Could not get auth token');
+        }
+      }
 
       // Start session with backend
       try {
         const response = await fetch(`${API_BASE}/api/session/start`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pitchData })
+          headers,
+          body: JSON.stringify({ pitchData, verification: currentVerification })
         });
 
         if (response.ok) {
@@ -432,6 +901,238 @@
         initPanel();
       });
     }
+  }
+
+  // ========================================
+  // Demo Mode Functions (for guests)
+  // ========================================
+
+  function initDemoPanel() {
+    console.log('Starting demo mode...');
+
+    // Update meeting title with demo company name
+    const meetingTitle = document.getElementById('meetingTitle');
+    if (meetingTitle && pitchData) {
+      meetingTitle.textContent = `${pitchData.companyName} — Demo Mode`;
+    }
+
+    // Initialize participants (sharks grid)
+    initParticipants();
+
+    // Start timer (just for visual effect)
+    remainingSeconds = TOTAL_SESSION_TIME;
+    pitchTimeRemaining = PITCH_DURATION;
+    currentPhase = 'pitch';
+    startTimer();
+
+    // Initialize webcam (still show user's face)
+    initWebcam();
+
+    // Initialize TTS audio player
+    initAudioPlayer();
+
+    // Show demo mode banner
+    showDemoBanner();
+
+    // Disable user inputs (demo is non-interactive)
+    disableDemoInputs();
+
+    // Update phase indicator
+    updatePhaseIndicator();
+
+    // Start the scripted demo playback
+    setTimeout(() => {
+      // Auto-transition to Q&A phase after brief pitch display
+      currentPhase = 'qa';
+      updatePhaseIndicator();
+      const meetingTitle = document.getElementById('meetingTitle');
+      if (meetingTitle) {
+        meetingTitle.textContent = `${pitchData.companyName} — Q&A Phase (Demo)`;
+      }
+      // Start playing the demo script
+      playDemoScript();
+    }, 2000);
+  }
+
+  function showDemoBanner() {
+    const banner = document.getElementById('demoBanner');
+    if (banner) {
+      banner.style.display = 'flex';
+      // Wire up the sign-in button
+      const signInBtn = document.getElementById('demoSignInBtn');
+      if (signInBtn) {
+        signInBtn.onclick = () => {
+          // Clean up demo and go to auth
+          cleanupDemo();
+          showView('authView');
+        };
+      }
+    }
+  }
+
+  function hideDemoBanner() {
+    const banner = document.getElementById('demoBanner');
+    if (banner) {
+      banner.style.display = 'none';
+    }
+  }
+
+  function disableDemoInputs() {
+    // Disable mic button
+    const micBtn = document.getElementById('micBtn');
+    if (micBtn) {
+      micBtn.disabled = true;
+      micBtn.classList.add('demo-disabled');
+      micBtn.title = 'Microphone disabled in demo mode';
+    }
+
+    // Disable chat input
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+      chatInput.disabled = true;
+      chatInput.placeholder = 'Sign in to chat with the sharks!';
+    }
+
+    // Disable send button
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) {
+      sendBtn.disabled = true;
+      sendBtn.classList.add('demo-disabled');
+    }
+
+    // Disable end pitch button
+    const endPitchBtn = document.getElementById('endPitchBtn');
+    if (endPitchBtn) {
+      endPitchBtn.disabled = true;
+      endPitchBtn.classList.add('demo-disabled');
+    }
+  }
+
+  function playDemoScript() {
+    const demoTimeouts = [];
+
+    DEMO_SCRIPT.conversation.forEach(event => {
+      const timeout = setTimeout(() => {
+        if (!isDemoMode) return; // Stop if user left demo
+
+        switch (event.type) {
+          case 'thinking':
+            showThinking(SHARK_NAMES[event.shark] || event.shark);
+            break;
+
+          case 'message':
+            hideThinking(SHARK_NAMES[event.shark] || event.shark);
+            sendSharkMessage(SHARK_NAMES[event.shark] || event.shark, event.text);
+            break;
+
+          case 'out':
+            setSharkOut(event.shark, "I'm out.");
+            break;
+
+          case 'offer':
+            addOfferToUI({
+              id: 'demo-offer-' + event.shark,
+              sharkId: event.shark,
+              sharkName: SHARK_NAMES[event.shark] || event.shark,
+              amount: event.amount,
+              equity: event.equity,
+              isDemo: true
+            });
+            break;
+
+          case 'demo_end':
+            showDemoEndOverlay();
+            break;
+        }
+      }, event.delay);
+
+      demoTimeouts.push(timeout);
+    });
+
+    // Store timeouts so we can cancel if user leaves
+    window.demoTimeouts = demoTimeouts;
+  }
+
+  function showDemoEndOverlay() {
+    // Stop the timer
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'demoEndOverlay';
+    overlay.className = 'demo-end-overlay';
+    overlay.innerHTML = `
+      <div class="demo-end-content">
+        <div class="demo-end-icon">&#127909;</div>
+        <h2>Demo Complete!</h2>
+        <p>That was just a preview of what Shark Tank Simulator can do.</p>
+        <p>Sign in with Twitter/X to pitch <strong>YOUR</strong> business to the AI sharks!</p>
+        <div class="demo-end-buttons">
+          <button id="demoEndSignIn" class="demo-end-cta">
+            <span>Sign in with</span>
+            <span class="x-logo">&#120143;</span>
+          </button>
+          <button id="demoEndReplay" class="demo-end-secondary">Watch Again</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      overlay.classList.add('visible');
+    });
+
+    // Event handlers
+    document.getElementById('demoEndSignIn').onclick = () => {
+      cleanupDemo();
+      overlay.remove();
+      showView('authView');
+    };
+
+    document.getElementById('demoEndReplay').onclick = () => {
+      overlay.remove();
+      cleanupDemo();
+      showView('entryView');
+    };
+  }
+
+  function cleanupDemo() {
+    isDemoMode = false;
+
+    // Clear any pending demo timeouts
+    if (window.demoTimeouts) {
+      window.demoTimeouts.forEach(t => clearTimeout(t));
+      window.demoTimeouts = [];
+    }
+
+    // Stop timer
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    // Hide demo banner
+    hideDemoBanner();
+
+    // Clear chat
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+      chatMessages.innerHTML = '';
+    }
+
+    // Clear offers
+    const offersContainer = document.getElementById('offersContainer');
+    if (offersContainer) {
+      offersContainer.innerHTML = '';
+    }
+    pendingOffers = [];
+
+    // Reset phase
+    currentPhase = 'pitch';
   }
 
   // ========================================
