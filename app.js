@@ -10,10 +10,19 @@
   // ========================================
   // Configuration
   // ========================================
-  const API_BASE = window.location.origin;
+  // Detect production (Vercel) vs local development
+  const isProduction = window.location.hostname.includes('vercel.app') ||
+                       window.location.hostname === 'sharktanksimulator.com' ||
+                       (!window.location.hostname.includes('localhost') && window.location.port === '');
+
+  // Railway backend URL for production, local Flask server for development
+  // TODO: Replace with your actual Railway URL after deployment
+  const RAILWAY_BACKEND_URL = 'https://shark-tank-simulator-production.up.railway.app';
+  const API_BASE = isProduction ? RAILWAY_BACKEND_URL : window.location.origin;
+
   const TOTAL_SESSION_TIME = 900; // 15 minutes total
   const PITCH_DURATION = 180; // 3 minutes max for pitch
-  const USE_SSE = window.location.port === '8443'; // Use SSE only for local Flask server
+  const USE_SSE = isProduction || window.location.port === '8443'; // Use SSE for Railway and local Flask
 
   // ========================================
   // State

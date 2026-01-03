@@ -39,7 +39,17 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__, static_folder='..', static_url_path='')
-CORS(app)
+
+# CORS configuration - allow frontend domains
+CORS(app, origins=[
+    "http://localhost:*",
+    "https://localhost:*",
+    "https://*.vercel.app",
+    "https://shark-tank-simulator.vercel.app",
+    "https://*.up.railway.app",
+    # Add your custom domain here when ready
+    # "https://sharktanksimulator.com",
+], supports_credentials=True)
 
 # Initialize managers
 session_manager = SessionManager()
@@ -92,6 +102,15 @@ def send_sse_event(session_id, event_type, data):
         'timestamp': int(__import__('time').time() * 1000)
     }
     q.put(event)
+
+
+# =============================================================================
+# Health Check (for Railway/Docker)
+# =============================================================================
+
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'healthy', 'service': 'shark-tank-simulator'})
 
 
 # =============================================================================
@@ -973,16 +992,25 @@ def get_rate_limit_status():
 if __name__ == '__main__':
     import ssl
 
-    # Check for SSL certificates
-    cert_path = os.path.join('..', 'cert.pem')
-    key_path = os.path.join('..', 'key.pem')
+    # Railway sets PORT env var - use it for production
+    port = int(os.environ.get('PORT', 8443))
+    is_production = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PORT')
 
-    if os.path.exists(cert_path) and os.path.exists(key_path):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(cert_path, key_path)
-        print("Starting Flask server with HTTPS on port 8443...")
-        app.run(host='0.0.0.0', port=8443, ssl_context=context, debug=True, threaded=True)
+    if is_production:
+        # Railway handles SSL termination, run on HTTP
+        print(f"Starting Flask server on port {port} (Railway production mode)...")
+        app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     else:
-        print("SSL certificates not found. Starting on HTTP port 5001...")
-        print("Note: Speech recognition requires HTTPS.")
-        app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)
+        # Local development with optional HTTPS
+        cert_path = os.path.join('..', 'cert.pem')
+        key_path = os.path.join('..', 'key.pem')
+
+        if os.path.exists(cert_path) and os.path.exists(key_path):
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert_path, key_path)
+            print(f"Starting Flask server with HTTPS on port {port}...")
+            app.run(host='0.0.0.0', port=port, ssl_context=context, debug=True, threaded=True)
+        else:
+            print(f"SSL certificates not found. Starting on HTTP port {port}...")
+            print("Note: Speech recognition requires HTTPS.")
+            app.run(host='0.0.0.0', port=port, debug=True, threaded=True)
