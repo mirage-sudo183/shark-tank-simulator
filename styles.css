@@ -125,7 +125,7 @@ body {
    ======================================== */
 .view--entry {
   display: flex;
-  align-items: flex-start;
+  align-items: safe center;
   justify-content: center;
   padding: 40px 20px;
   overflow-y: auto;
@@ -137,8 +137,6 @@ body {
 .entry-container {
   width: 100%;
   max-width: 480px;
-  margin-top: auto;
-  margin-bottom: auto;
 }
 
 .entry-header {
