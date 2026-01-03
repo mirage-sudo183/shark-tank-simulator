@@ -1,43 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb" }
-    }
-  ],
   "routes": [
-    {
-      "src": "/api/session/start",
-      "dest": "/api/session.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/chat",
-      "dest": "/api/chat.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/verify/defi/search",
-      "dest": "/api/verify-defi.py",
-      "methods": ["GET", "OPTIONS"]
-    },
-    {
-      "src": "/api/verify/defi",
-      "dest": "/api/verify-defi.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/verify/trustmrr",
-      "dest": "/api/verify-trustmrr.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/leaderboard",
-      "dest": "/api/leaderboard.py",
-      "methods": ["GET", "OPTIONS"]
-    },
     {
       "src": "/(.*\\.(js|css|png|jpg|ico|svg|woff|woff2|ttf))",
       "dest": "/$1"
@@ -46,10 +9,5 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "ANTHROPIC_API_KEY": "@anthropic-api-key",
-    "FIREBASE_SERVICE_ACCOUNT_JSON": "@firebase-service-account",
-    "ELEVEN_LABS_API_KEY": "@eleven-labs-api-key"
-  }
+  ]
 }
