@@ -15,13 +15,15 @@ class SessionManager:
         self.sessions = {}
         self.lock = Lock()
 
-    def create_session(self, pitch_data):
+    def create_session(self, pitch_data, user_id=None, twitter_handle=None):
         """Create a new pitch session."""
         session_id = str(uuid.uuid4())[:8]
 
         with self.lock:
             self.sessions[session_id] = {
                 'id': session_id,
+                'userId': user_id,  # Firebase user ID (if authenticated)
+                'twitterHandle': twitter_handle,  # Twitter handle (if authenticated)
                 'pitchData': pitch_data,
                 'phase': 'pitch',  # pitch, qa, offers, closed
                 'transcript': [],  # Pitch transcript

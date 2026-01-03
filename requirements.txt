@@ -15,3 +15,6 @@ openai>=1.0.0
 
 # HTTP requests (for Eleven Labs TTS)
 requests>=2.31.0
+
+# Firebase Admin SDK (for token verification)
+firebase-admin>=6.0.0

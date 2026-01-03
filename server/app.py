@@ -18,6 +18,7 @@ from session import SessionManager
 from sharks import SharkManager, SHARK_IDS
 from ai_client import AIClient
 from tts_client import TTSClient
+from firebase_admin_init import initialize_firebase, optional_auth
 
 # OpenAI for Whisper transcription
 try:
@@ -45,6 +46,9 @@ if OpenAI and os.getenv('OPENAI_API_KEY'):
     print("[Whisper] OpenAI client initialized for speech-to-text")
 else:
     print("[Whisper] OpenAI API key not configured - speech-to-text disabled")
+
+# Initialize Firebase Admin SDK
+initialize_firebase()
 
 # SSE event queues per session
 session_queues = {}
@@ -102,13 +106,22 @@ def static_files(path):
 # =============================================================================
 
 @app.route('/api/session/start', methods=['POST'])
+@optional_auth
 def start_session():
     """Initialize a new pitch session."""
     data = request.json
     pitch_data = data.get('pitchData', {})
 
-    # Create session
-    session_id = session_manager.create_session(pitch_data)
+    # Extract user info if authenticated
+    user_id = None
+    twitter_handle = None
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+        if hasattr(request, 'user_data') and request.user_data:
+            twitter_handle = request.user_data.get('twitterHandle')
+
+    # Create session with user info
+    session_id = session_manager.create_session(pitch_data, user_id=user_id, twitter_handle=twitter_handle)
 
     # Initialize shark states with confidence scores
     sharks = []
