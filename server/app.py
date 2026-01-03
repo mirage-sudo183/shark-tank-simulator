@@ -46,7 +46,17 @@ CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 # Initialize managers
 session_manager = SessionManager()
 shark_manager = SharkManager()
-ai_client = AIClient(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+# Log API key status (for debugging)
+# Strip whitespace/newlines from API key (common copy-paste issue)
+anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+if anthropic_key:
+    anthropic_key = anthropic_key.strip()
+    print(f"[AI] Anthropic API key configured (length: {len(anthropic_key)})")
+else:
+    print("[AI] WARNING: ANTHROPIC_API_KEY not set - using fallback responses!")
+
+ai_client = AIClient(api_key=anthropic_key)
 tts_client = TTSClient(api_key=os.getenv('ELEVEN_LABS_API_KEY'))
 
 # Initialize OpenAI client for Whisper
@@ -103,6 +113,79 @@ def send_sse_event(session_id, event_type, data):
 @app.route('/health')
 def health_check():
     return jsonify({'status': 'healthy', 'service': 'shark-tank-simulator'})
+
+
+@app.route('/api/debug/ai-status')
+def ai_status():
+    """Debug endpoint to check AI client status."""
+    import socket
+    import urllib.request
+
+    status = {
+        'anthropic_key_set': bool(anthropic_key),
+        'anthropic_key_length': len(anthropic_key) if anthropic_key else 0,
+        'client_initialized': ai_client.client is not None,
+    }
+
+    # Test DNS resolution
+    try:
+        ip = socket.gethostbyname('api.anthropic.com')
+        status['dns_resolution'] = f'success: {ip}'
+    except Exception as e:
+        status['dns_resolution'] = f'failed: {e}'
+
+    # Test basic HTTPS connectivity
+    try:
+        req = urllib.request.Request('https://api.anthropic.com/', method='HEAD')
+        req.add_header('User-Agent', 'shark-tank-simulator/1.0')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            status['https_connectivity'] = f'success: {resp.status}'
+    except Exception as e:
+        status['https_connectivity'] = f'failed: {type(e).__name__}: {str(e)[:100]}'
+
+    # Test with httpx directly - POST request like Anthropic SDK
+    try:
+        import httpx
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                'https://api.anthropic.com/v1/messages',
+                headers={
+                    'x-api-key': anthropic_key,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json',
+                },
+                json={
+                    'model': 'claude-sonnet-4-20250514',
+                    'max_tokens': 10,
+                    'messages': [{'role': 'user', 'content': 'Say OK'}]
+                }
+            )
+            status['httpx_post_test'] = f'status: {resp.status_code}'
+            if resp.status_code == 200:
+                status['httpx_response'] = resp.json().get('content', [{}])[0].get('text', '')[:50]
+            else:
+                status['httpx_error'] = resp.text[:200]
+    except Exception as e:
+        status['httpx_post_test'] = f'failed: {type(e).__name__}: {str(e)[:150]}'
+
+    # Try a simple API call to test connectivity
+    if ai_client.client:
+        try:
+            # Use a minimal request to test connection
+            response = ai_client.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=10,
+                messages=[{"role": "user", "content": "Say 'OK'"}]
+            )
+            status['api_test'] = 'success'
+            status['api_response'] = response.content[0].text[:50]
+        except Exception as e:
+            import traceback
+            status['api_test'] = 'failed'
+            status['api_error'] = f"{type(e).__name__}: {str(e)[:200]}"
+            status['api_traceback'] = traceback.format_exc()[-500:]
+
+    return jsonify(status)
 
 
 # =============================================================================
