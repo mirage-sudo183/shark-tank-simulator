@@ -1,2 +1,13 @@
-anthropic>=0.18.0
+# Vercel Serverless Functions - Python Dependencies
+
+# Anthropic Claude API for AI shark responses
+anthropic>=0.34.0
+
+# HTTP requests for external APIs (DefiLlama, TrustMRR)
 requests>=2.31.0
+
+# HTML parsing for TrustMRR verification
+beautifulsoup4>=4.12.0
+
+# Firebase Admin SDK for Firestore access
+firebase-admin>=6.0.0

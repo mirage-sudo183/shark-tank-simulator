@@ -18,6 +18,14 @@ from session import SessionManager
 from sharks import SharkManager, SHARK_IDS
 from ai_client import AIClient
 from tts_client import TTSClient
+from firebase_admin_init import initialize_firebase, optional_auth, require_auth
+
+# Verification modules
+from verification.defillama import search_protocols, verify_protocol_ownership
+from verification.trustmrr import verify_mrr_ownership
+
+# Rate limiting
+from rate_limiter import rate_limiter, rate_limit
 
 # OpenAI for Whisper transcription
 try:
@@ -31,12 +39,24 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__, static_folder='..', static_url_path='')
-CORS(app)
+
+# CORS configuration - allow frontend domains
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
 # Initialize managers
 session_manager = SessionManager()
 shark_manager = SharkManager()
-ai_client = AIClient(api_key=os.getenv('ANTHROPIC_API_KEY'))
+
+# Log API key status (for debugging)
+# Strip whitespace/newlines from API key (common copy-paste issue)
+anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+if anthropic_key:
+    anthropic_key = anthropic_key.strip()
+    print(f"[AI] Anthropic API key configured (length: {len(anthropic_key)})")
+else:
+    print("[AI] WARNING: ANTHROPIC_API_KEY not set - using fallback responses!")
+
+ai_client = AIClient(api_key=anthropic_key)
 tts_client = TTSClient(api_key=os.getenv('ELEVEN_LABS_API_KEY'))
 
 # Initialize OpenAI client for Whisper
@@ -45,6 +65,9 @@ if OpenAI and os.getenv('OPENAI_API_KEY'):
     print("[Whisper] OpenAI client initialized for speech-to-text")
 else:
     print("[Whisper] OpenAI API key not configured - speech-to-text disabled")
+
+# Initialize Firebase Admin SDK
+initialize_firebase()
 
 # SSE event queues per session
 session_queues = {}
@@ -84,6 +107,88 @@ def send_sse_event(session_id, event_type, data):
 
 
 # =============================================================================
+# Health Check (for Railway/Docker)
+# =============================================================================
+
+@app.route('/health')
+def health_check():
+    return jsonify({'status': 'healthy', 'service': 'shark-tank-simulator'})
+
+
+@app.route('/api/debug/ai-status')
+def ai_status():
+    """Debug endpoint to check AI client status."""
+    import socket
+    import urllib.request
+
+    status = {
+        'anthropic_key_set': bool(anthropic_key),
+        'anthropic_key_length': len(anthropic_key) if anthropic_key else 0,
+        'client_initialized': ai_client.client is not None,
+    }
+
+    # Test DNS resolution
+    try:
+        ip = socket.gethostbyname('api.anthropic.com')
+        status['dns_resolution'] = f'success: {ip}'
+    except Exception as e:
+        status['dns_resolution'] = f'failed: {e}'
+
+    # Test basic HTTPS connectivity
+    try:
+        req = urllib.request.Request('https://api.anthropic.com/', method='HEAD')
+        req.add_header('User-Agent', 'shark-tank-simulator/1.0')
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            status['https_connectivity'] = f'success: {resp.status}'
+    except Exception as e:
+        status['https_connectivity'] = f'failed: {type(e).__name__}: {str(e)[:100]}'
+
+    # Test with httpx directly - POST request like Anthropic SDK
+    try:
+        import httpx
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                'https://api.anthropic.com/v1/messages',
+                headers={
+                    'x-api-key': anthropic_key,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json',
+                },
+                json={
+                    'model': 'claude-sonnet-4-20250514',
+                    'max_tokens': 10,
+                    'messages': [{'role': 'user', 'content': 'Say OK'}]
+                }
+            )
+            status['httpx_post_test'] = f'status: {resp.status_code}'
+            if resp.status_code == 200:
+                status['httpx_response'] = resp.json().get('content', [{}])[0].get('text', '')[:50]
+            else:
+                status['httpx_error'] = resp.text[:200]
+    except Exception as e:
+        status['httpx_post_test'] = f'failed: {type(e).__name__}: {str(e)[:150]}'
+
+    # Try a simple API call to test connectivity
+    if ai_client.client:
+        try:
+            # Use a minimal request to test connection
+            response = ai_client.client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=10,
+                messages=[{"role": "user", "content": "Say 'OK'"}]
+            )
+            status['api_test'] = 'success'
+            status['api_response'] = response.content[0].text[:50]
+        except Exception as e:
+            import traceback
+            status['api_test'] = 'failed'
+            status['api_error'] = f"{type(e).__name__}: {str(e)[:200]}"
+            status['api_traceback'] = traceback.format_exc()[-500:]
+
+    return jsonify(status)
+
+
+# =============================================================================
 # Static File Serving
 # =============================================================================
 
@@ -102,13 +207,24 @@ def static_files(path):
 # =============================================================================
 
 @app.route('/api/session/start', methods=['POST'])
+@optional_auth
+@rate_limit
 def start_session():
     """Initialize a new pitch session."""
     data = request.json
     pitch_data = data.get('pitchData', {})
+    verification = data.get('verification')
 
-    # Create session
-    session_id = session_manager.create_session(pitch_data)
+    # Extract user info if authenticated
+    user_id = None
+    twitter_handle = None
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+        if hasattr(request, 'user_data') and request.user_data:
+            twitter_handle = request.user_data.get('twitterHandle')
+
+    # Create session with user info and verification
+    session_id = session_manager.create_session(pitch_data, user_id=user_id, twitter_handle=twitter_handle)
 
     # Initialize shark states with confidence scores
     sharks = []
@@ -789,22 +905,187 @@ def transcribe_status():
 
 
 # =============================================================================
+# Verification Endpoints
+# =============================================================================
+
+@app.route('/api/verify/defi/search', methods=['GET'])
+def search_defi_protocols():
+    """Search DefiLlama for protocols by name."""
+    query = request.args.get('q', '')
+    if not query or len(query) < 2:
+        return jsonify({'error': 'Query too short', 'results': []}), 400
+
+    results = search_protocols(query)
+    return jsonify({'results': results})
+
+
+@app.route('/api/verify/defi', methods=['POST'])
+@require_auth
+def verify_defi_protocol():
+    """
+    Verify user owns a DeFi protocol via Twitter match.
+    Requires authentication.
+    """
+    data = request.json
+    protocol_slug = data.get('protocolSlug')
+
+    if not protocol_slug:
+        return jsonify({'error': 'Protocol slug required'}), 400
+
+    # Get user's Twitter handle
+    twitter_handle = None
+    if request.user_data:
+        twitter_handle = request.user_data.get('twitterHandle')
+
+    if not twitter_handle:
+        return jsonify({
+            'error': 'Twitter handle not found. Please sign in with Twitter.',
+            'verified': False
+        }), 400
+
+    # Verify ownership
+    result = verify_protocol_ownership(twitter_handle, protocol_slug)
+
+    # If verified, save to user profile
+    if result.get('verified'):
+        from firebase_admin_init import update_user_verification
+        try:
+            update_user_verification(request.user['uid'], 'defi', {
+                'protocol': result.get('protocol'),
+                'metrics': result.get('metrics'),
+                'verifiedAt': int(__import__('time').time() * 1000)
+            })
+        except Exception as e:
+            print(f"[Verification] Failed to save verification: {e}")
+
+    return jsonify(result)
+
+
+@app.route('/api/verify/trustmrr', methods=['POST'])
+@require_auth
+def verify_trustmrr_profile():
+    """
+    Verify user owns a TrustMRR profile via Twitter match.
+    Requires authentication.
+    """
+    data = request.json
+    profile_url = data.get('profileUrl')
+
+    if not profile_url:
+        return jsonify({'error': 'TrustMRR profile URL required'}), 400
+
+    # Get user's Twitter handle
+    twitter_handle = None
+    if request.user_data:
+        twitter_handle = request.user_data.get('twitterHandle')
+
+    if not twitter_handle:
+        return jsonify({
+            'error': 'Twitter handle not found. Please sign in with Twitter.',
+            'verified': False
+        }), 400
+
+    # Verify ownership
+    result = verify_mrr_ownership(twitter_handle, profile_url)
+
+    # If verified, save to user profile
+    if result.get('verified'):
+        from firebase_admin_init import update_user_verification
+        try:
+            update_user_verification(request.user['uid'], 'trustmrr', {
+                'profile': result.get('profile'),
+                'metrics': result.get('metrics'),
+                'verifiedAt': int(__import__('time').time() * 1000)
+            })
+        except Exception as e:
+            print(f"[Verification] Failed to save verification: {e}")
+
+    return jsonify(result)
+
+
+@app.route('/api/verify/status', methods=['GET'])
+@require_auth
+def get_verification_status():
+    """Get current user's verification status."""
+    verifications = {}
+    if request.user_data:
+        verifications = request.user_data.get('verifications', {})
+
+    return jsonify({
+        'verified': bool(verifications),
+        'verifications': verifications
+    })
+
+
+# =============================================================================
+# Leaderboard Endpoints
+# =============================================================================
+
+@app.route('/api/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Get leaderboard entries."""
+    from firebase_admin_init import get_leaderboard_from_firestore
+
+    verified_only = request.args.get('verified', 'true').lower() == 'true'
+    limit_count = min(int(request.args.get('limit', 50)), 100)
+
+    entries = get_leaderboard_from_firestore(verified_only=verified_only, limit_count=limit_count)
+    return jsonify({'entries': entries})
+
+
+@app.route('/api/leaderboard/user/<user_id>', methods=['GET'])
+def get_user_leaderboard_entry(user_id):
+    """Get a specific user's best pitch."""
+    from firebase_admin_init import get_user_pitches
+
+    pitches = get_user_pitches(user_id, limit_count=1)
+    if pitches:
+        return jsonify({'entry': pitches[0]})
+    return jsonify({'entry': None})
+
+
+# =============================================================================
+# Rate Limit Status
+# =============================================================================
+
+@app.route('/api/rate-limit/status', methods=['GET'])
+@optional_auth
+def get_rate_limit_status():
+    """Get current user's rate limit status."""
+    user_id = None
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+
+    stats = rate_limiter.get_user_stats(user_id)
+    return jsonify(stats)
+
+
+# =============================================================================
 # Main
 # =============================================================================
 
 if __name__ == '__main__':
     import ssl
 
-    # Check for SSL certificates
-    cert_path = os.path.join('..', 'cert.pem')
-    key_path = os.path.join('..', 'key.pem')
+    # Railway sets PORT env var - use it for production
+    port = int(os.environ.get('PORT', 8443))
+    is_production = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('PORT')
 
-    if os.path.exists(cert_path) and os.path.exists(key_path):
-        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        context.load_cert_chain(cert_path, key_path)
-        print("Starting Flask server with HTTPS on port 8443...")
-        app.run(host='0.0.0.0', port=8443, ssl_context=context, debug=True, threaded=True)
+    if is_production:
+        # Railway handles SSL termination, run on HTTP
+        print(f"Starting Flask server on port {port} (Railway production mode)...")
+        app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
     else:
-        print("SSL certificates not found. Starting on HTTP port 5000...")
-        print("Note: Speech recognition requires HTTPS.")
-        app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+        # Local development with optional HTTPS
+        cert_path = os.path.join('..', 'cert.pem')
+        key_path = os.path.join('..', 'key.pem')
+
+        if os.path.exists(cert_path) and os.path.exists(key_path):
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert_path, key_path)
+            print(f"Starting Flask server with HTTPS on port {port}...")
+            app.run(host='0.0.0.0', port=port, ssl_context=context, debug=True, threaded=True)
+        else:
+            print(f"SSL certificates not found. Starting on HTTP port {port}...")
+            print("Note: Speech recognition requires HTTPS.")
+            app.run(host='0.0.0.0', port=port, debug=True, threaded=True)

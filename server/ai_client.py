@@ -4,6 +4,8 @@ Handles AI-powered shark responses
 """
 
 import anthropic
+import httpx
+import time
 
 
 class AIClient:
@@ -12,8 +14,22 @@ class AIClient:
     def __init__(self, api_key=None):
         self.api_key = api_key
         self.client = None
+        self.max_retries = 3
+        self.retry_delay = 1  # seconds
+
         if api_key:
-            self.client = anthropic.Anthropic(api_key=api_key)
+            # Configure with custom httpx client for Railway compatibility
+            http_client = httpx.Client(
+                timeout=httpx.Timeout(60.0, connect=30.0),
+                follow_redirects=True,
+            )
+            self.client = anthropic.Anthropic(
+                api_key=api_key,
+                http_client=http_client,
+            )
+            print("[AI] Anthropic client initialized with custom HTTP client")
+        else:
+            print("[AI] No API key provided - using fallback responses")
 
     def _format_transcript(self, transcript):
         """Format pitch transcript for the prompt."""
@@ -88,21 +104,40 @@ Respond in character. You may:
 
 Keep your response to 2-3 sentences maximum. Be authentic to your character. Do not be overly verbose."""
 
-        try:
-            response = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=200,
-                system=persona,
-                messages=[
-                    {"role": "user", "content": user_prompt}
-                ]
-            )
+        # Retry logic for connection issues
+        last_error = None
+        for attempt in range(self.max_retries):
+            try:
+                response = self.client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=200,
+                    system=persona,
+                    messages=[
+                        {"role": "user", "content": user_prompt}
+                    ]
+                )
 
-            return response.content[0].text.strip()
+                return response.content[0].text.strip()
 
-        except Exception as e:
-            print(f"Error generating response: {e}")
-            return self._get_fallback_response(shark_id, confidence)
+            except anthropic.APIConnectionError as e:
+                last_error = e
+                print(f"[AI] Connection error (attempt {attempt + 1}/{self.max_retries}): {e}")
+                if attempt < self.max_retries - 1:
+                    time.sleep(self.retry_delay * (attempt + 1))  # Exponential backoff
+                continue
+            except anthropic.RateLimitError as e:
+                print(f"[AI] Rate limit exceeded: {e}")
+                return self._get_fallback_response(shark_id, confidence)
+            except anthropic.AuthenticationError as e:
+                print(f"[AI] Authentication error - check API key: {e}")
+                return self._get_fallback_response(shark_id, confidence)
+            except Exception as e:
+                print(f"[AI] Error generating response: {type(e).__name__}: {e}")
+                return self._get_fallback_response(shark_id, confidence)
+
+        # All retries failed
+        print(f"[AI] All {self.max_retries} retries failed, using fallback")
+        return self._get_fallback_response(shark_id, confidence)
 
     def generate_decline_response(self, shark_id, persona, original_offer):
         """Generate a response when the user declines an offer."""

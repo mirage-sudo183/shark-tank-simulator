@@ -1,25 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/**/*.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb" }
-    }
-  ],
   "routes": [
     {
-      "src": "/api/session/start",
-      "dest": "/api/session.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/api/chat",
-      "dest": "/api/chat.py",
-      "methods": ["POST", "OPTIONS"]
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|ico|svg))",
+      "src": "/(.*\\.(js|css|png|jpg|ico|svg|woff|woff2|ttf))",
       "dest": "/$1"
     },
     {

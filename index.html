@@ -9,10 +9,115 @@
 <body>
   <div class="app">
     <!-- ========================================
+         VIEW 0: Auth / Login
+         ======================================== -->
+    <div class="view view--auth" id="authView">
+      <div class="auth-container">
+        <div class="auth-header">
+          <div class="auth-logo">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="auth-title">Shark Tank Simulator</h1>
+          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
+        </div>
+
+        <!-- Login buttons (shown when not logged in) -->
+        <div class="auth-content" id="authLoginContent">
+          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Sign in with X (Twitter)
+          </button>
+
+          <p class="auth-note">
+            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
+          </p>
+
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+
+          <button class="auth-btn auth-btn--guest" id="guestBtn">
+            Continue as Guest
+          </button>
+          <p class="auth-guest-note">
+            Guest pitches won't appear on the leaderboard
+          </p>
+        </div>
+
+        <!-- Logged in state (shown when logged in) -->
+        <div class="auth-content auth-logged-in" id="authLoggedInContent" style="display: none;">
+          <div class="auth-user-info">
+            <img class="auth-user-avatar" id="authUserAvatar" src="" alt="User">
+            <span class="auth-user-name" id="authUserName">@username</span>
+          </div>
+
+          <button class="auth-btn auth-btn--primary" id="continueToFormBtn">
+            Continue to Pitch Form
+          </button>
+
+          <button class="auth-btn auth-btn--secondary" id="authLogoutBtn">
+            Sign Out
+          </button>
+        </div>
+
+        <div class="auth-footer">
+          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10"/>
+              <path d="M18 20V4"/>
+              <path d="M6 20v-4"/>
+            </svg>
+            View Leaderboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
          VIEW 1: Entry Form
          ======================================== -->
-    <div class="view view--entry" id="entryView">
+    <div class="view view--entry" id="entryView" style="display: none;">
       <div class="entry-container">
+        <!-- User Profile Bar (shown when logged in) -->
+        <div class="user-bar" id="userBar" style="display: none;">
+          <div class="user-bar-left">
+            <img class="user-bar-avatar" id="userBarAvatar" src="" alt="User">
+            <span class="user-bar-name" id="userBarName">@username</span>
+          </div>
+          <div class="user-bar-right">
+            <button class="user-bar-btn" id="userLeaderboardBtn" title="Leaderboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20V10"/>
+                <path d="M18 20V4"/>
+                <path d="M6 20v-4"/>
+              </svg>
+            </button>
+            <button class="user-bar-btn user-bar-btn--logout" id="logoutBtn" title="Sign Out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Back to Auth button (always visible) -->
+        <div class="entry-back-row">
+          <button type="button" class="entry-back-btn" id="backToAuthBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back to Login
+          </button>
+        </div>
+
         <div class="entry-header">
           <div class="entry-logo">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -84,6 +189,84 @@
             </div>
           </div>
 
+          <!-- Verification Section (shows when user is logged in and has revenue/users) -->
+          <div class="form-group form-group--verification" id="verificationSection" style="display: none;">
+            <label class="form-label">Verify your metrics (optional)</label>
+            <p class="form-hint verification-hint">Verified metrics appear on the leaderboard with a badge</p>
+
+            <!-- Verification Options -->
+            <div class="verification-options">
+              <!-- DeFi Verification -->
+              <div class="verification-option" id="defiVerificationOption">
+                <button type="button" class="verification-btn" id="verifyDefiBtn">
+                  <svg class="verification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12l2 2 4-4"/>
+                  </svg>
+                  <span>Verify with DefiLlama</span>
+                </button>
+                <span class="verification-desc">For crypto/DeFi protocols</span>
+              </div>
+
+              <!-- TrustMRR Verification -->
+              <div class="verification-option" id="trustmrrVerificationOption">
+                <button type="button" class="verification-btn" id="verifyTrustMRRBtn">
+                  <svg class="verification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                  <span>Verify with TrustMRR</span>
+                </button>
+                <span class="verification-desc">For SaaS with Stripe</span>
+              </div>
+            </div>
+
+            <!-- Verification Status -->
+            <div class="verification-status" id="verificationStatus" style="display: none;">
+              <div class="verification-badge" id="verificationBadge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm-1.5 14.94l-3.5-3.5 1.41-1.41 2.09 2.09 5.59-5.59 1.41 1.41-7 7z"/>
+                </svg>
+                <span id="verificationText">Verified</span>
+              </div>
+              <span class="verification-details" id="verificationDetails"></span>
+            </div>
+          </div>
+
+          <!-- DefiLlama Search Modal -->
+          <div class="modal" id="defiModal" style="display: none;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>Verify with DefiLlama</h3>
+                <button type="button" class="modal-close" id="closeDefiModal">&times;</button>
+              </div>
+              <div class="modal-body">
+                <p>Search for your protocol. We'll verify ownership by matching your Twitter handle.</p>
+                <div class="search-input-wrapper">
+                  <input type="text" class="form-input" id="defiSearchInput" placeholder="Search protocols...">
+                  <div class="search-spinner" id="defiSearchSpinner" style="display: none;"></div>
+                </div>
+                <div class="search-results" id="defiSearchResults"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TrustMRR Modal -->
+          <div class="modal" id="trustmrrModal" style="display: none;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>Verify with TrustMRR</h3>
+                <button type="button" class="modal-close" id="closeTrustMRRModal">&times;</button>
+              </div>
+              <div class="modal-body">
+                <p>Enter your TrustMRR profile URL. We'll verify by matching your Twitter handle.</p>
+                <input type="text" class="form-input" id="trustmrrUrlInput" placeholder="trustmrr.com/startup/yourcompany">
+                <button type="button" class="btn btn--primary" id="verifyTrustMRRSubmit">Verify</button>
+                <div class="verification-result" id="trustmrrResult" style="display: none;"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- Optional: Pushback expectation -->
           <div class="form-group form-group--optional">
             <label class="form-label" for="expectedPushback">
@@ -121,6 +304,17 @@
          VIEW 3: Panel (Video Call UI)
          ======================================== -->
     <div class="view view--panel" id="panelView" style="display: none;">
+      <!-- Demo Mode Banner (shown for guests) -->
+      <div id="demoBanner" class="demo-banner" style="display: none;">
+        <div class="demo-banner-content">
+          <span class="demo-badge">DEMO MODE</span>
+          <span class="demo-text">This is a preview. Sign in to pitch for real!</span>
+          <button id="demoSignInBtn" class="demo-cta">
+            Sign in with <span class="x-logo">&#120143;</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Top Header Bar (Light) -->
       <header class="header">
         <div class="header-left">
@@ -351,8 +545,89 @@
         </div>
       </div>
     </div>
+
+    <!-- ========================================
+         VIEW: Leaderboard
+         ======================================== -->
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
+      <div class="leaderboard-container">
+        <div class="leaderboard-header">
+          <button class="leaderboard-back" id="leaderboardBackBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back
+          </button>
+          <h1 class="leaderboard-title">Leaderboard</h1>
+          <div class="leaderboard-tabs">
+            <button class="leaderboard-tab leaderboard-tab--active" data-tab="verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Verified
+            </button>
+            <button class="leaderboard-tab" data-tab="all">
+              All Pitches
+            </button>
+          </div>
+        </div>
+
+        <div class="leaderboard-content">
+          <!-- User's rank card (if logged in) -->
+          <div class="leaderboard-user-card" id="leaderboardUserCard" style="display: none;">
+            <span class="user-card-rank" id="userCardRank">#--</span>
+            <img class="user-card-avatar" id="userCardAvatar" src="" alt="You">
+            <div class="user-card-info">
+              <span class="user-card-name" id="userCardName">Your Best</span>
+              <span class="user-card-company" id="userCardCompany">No deals yet</span>
+            </div>
+            <span class="user-card-amount" id="userCardAmount">$0</span>
+          </div>
+
+          <!-- Leaderboard list -->
+          <div class="leaderboard-list" id="leaderboardList">
+            <div class="leaderboard-loading">
+              <div class="loading-spinner"></div>
+              Loading leaderboard...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- Firebase SDK -->
+  <!-- Load Firebase config from gitignored file first -->
+  <script src="firebase-env.js"></script>
+  <script type="module">
+    import {
+      signInWithTwitter,
+      signOutUser,
+      onAuthChange,
+      getCurrentUser,
+      getIdToken,
+      savePitchResult,
+      getLeaderboard,
+      getUserBestPitch
+    } from './firebase-config.js';
+
+    // Expose Firebase functions to window for app.js
+    window.firebaseAuth = {
+      signInWithTwitter,
+      signOutUser,
+      onAuthChange,
+      getCurrentUser,
+      getIdToken,
+      savePitchResult,
+      getLeaderboard,
+      getUserBestPitch
+    };
+
+    // Dispatch event when Firebase is ready
+    window.dispatchEvent(new Event('firebase-ready'));
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
