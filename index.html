@@ -456,7 +456,13 @@
         <!-- Chat Panel -->
         <aside class="chat-panel">
           <div class="chat-header">
-            <span class="chat-title">Panel</span>
+            <div class="chat-tabs">
+              <button class="chat-tab chat-tab--active" id="chatTabBtn" data-tab="chat">Chat</button>
+              <button class="chat-tab" id="offersTabBtn" data-tab="offers">
+                Offers
+                <span class="offers-badge" id="offersBadge" style="display: none;">0</span>
+              </button>
+            </div>
             <button class="chat-menu-btn" title="More options">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="1"/>
@@ -466,10 +472,20 @@
             </button>
           </div>
 
+          <!-- Chat Messages Tab -->
           <div class="chat-messages" id="chatMessages">
             <div class="message message--system">
               <p class="message-text">The panel has begun. Good luck.</p>
             </div>
+          </div>
+
+          <!-- Offers Tab -->
+          <div class="offers-panel" id="offersPanel" style="display: none;">
+            <div class="offers-empty" id="offersEmpty">
+              <p>No active offers yet.</p>
+              <p class="offers-hint">When sharks make offers, they'll appear here with a 60-second timer.</p>
+            </div>
+            <div class="offers-list" id="offersList"></div>
           </div>
 
           <div class="chat-input-area">

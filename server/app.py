@@ -341,7 +341,7 @@ def generate_initial_reactions(session_id):
             is_going_out = "i'm out" in response.lower() or "im out" in response.lower()
 
             # Check if response contains an offer (only if not going out)
-            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data) if not is_going_out else None
+            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence) if not is_going_out else None
 
             # Send speaking indicator
             send_sse_event(session_id, 'shark_speaking', {
@@ -372,14 +372,9 @@ def generate_initial_reactions(session_id):
                     'message': response
                 })
 
-            # If there's an offer, send it separately
+            # If there's an offer, add it to session (offer already sent in shark_message)
             if offer:
                 session_manager.add_offer(session_id, offer)
-                send_sse_event(session_id, 'shark_offer', {
-                    'sharkId': shark_id,
-                    'sharkName': shark_manager.get_shark_name(shark_id),
-                    'offer': offer
-                })
 
             # Store in QA transcript
             session_manager.add_qa_message(session_id, {
@@ -524,7 +519,7 @@ def generate_shark_responses_to_user(session_id, user_message):
             is_going_out = "i'm out" in response.lower() or "im out" in response.lower()
 
             # Check for offer
-            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data) if not is_going_out else None
+            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence) if not is_going_out else None
 
             # Speaking
             send_sse_event(session_id, 'shark_speaking', {
@@ -555,13 +550,9 @@ def generate_shark_responses_to_user(session_id, user_message):
                     'message': response
                 })
 
+            # If there's an offer, add it to session (offer already sent in shark_message)
             if offer:
                 session_manager.add_offer(session_id, offer)
-                send_sse_event(session_id, 'shark_offer', {
-                    'sharkId': shark_id,
-                    'sharkName': shark_manager.get_shark_name(shark_id),
-                    'offer': offer
-                })
 
             # Store
             session_manager.add_qa_message(session_id, {
@@ -642,6 +633,47 @@ def offer_response(session_id):
     return jsonify({'error': 'Invalid action'}), 400
 
 
+@app.route('/api/session/<session_id>/offer-expired', methods=['POST'])
+def offer_expired(session_id):
+    """Handle when an offer expires (user didn't respond in time)."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    data = request.json
+    offer_id = data.get('offerId')
+    shark_id = data.get('sharkId')
+
+    if not shark_id:
+        return jsonify({'error': 'Missing sharkId'}), 400
+
+    # Mark offer as expired
+    if offer_id:
+        session_manager.update_offer_status(session_id, offer_id, 'expired')
+
+    # 50/50 chance: shark stays interested or goes out
+    import random
+    if random.random() < 0.5:
+        # Shark withdraws but stays interested
+        send_sse_event(session_id, 'shark_message', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'text': "Alright, I'm withdrawing my offer for now. But I'm still listening...",
+            'offer': None
+        })
+        return jsonify({'result': 'offer_withdrawn', 'sharkStatus': 'interested'})
+    else:
+        # Shark goes out
+        out_reason = shark_manager.get_out_reason(shark_id)
+        session_manager.update_shark_state(session_id, shark_id, {'status': 'out'})
+        send_sse_event(session_id, 'shark_out', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'message': f"You took too long. {out_reason}"
+        })
+        return jsonify({'result': 'shark_out', 'sharkStatus': 'out'})
+
+
 def handle_offer_decline(session_id, shark_id, original_offer):
     """Handle when user declines an offer."""
     session = session_manager.get_session(session_id)
@@ -689,6 +721,10 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
         return
 
     pitch_data = session.get('pitchData', {})
+
+    # Get shark's current confidence for offer generation
+    state = session_manager.get_shark_state(session_id, shark_id)
+    confidence = state.get('confidence', 70)
 
     # Thinking
     send_sse_event(session_id, 'shark_thinking', {
@@ -739,23 +775,21 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
         })
     else:
         # Shark rejects counter or makes new offer
+        # Parse offer first so we can include it in shark_message
+        new_offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
+
         send_sse_event(session_id, 'shark_message', {
             'sharkId': shark_id,
             'sharkName': shark_manager.get_shark_name(shark_id),
             'text': response,
+            'offer': new_offer,  # Include offer in message (may be None)
             'audio': tts_result if tts_result.get('audioData') else None,
             'duration': tts_result.get('duration', 0)
         })
 
-        # Check if there's a new offer in the response
-        new_offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data)
+        # Add offer to session if present
         if new_offer:
             session_manager.add_offer(session_id, new_offer)
-            send_sse_event(session_id, 'shark_offer', {
-                'sharkId': shark_id,
-                'sharkName': shark_manager.get_shark_name(shark_id),
-                'offer': new_offer
-            })
 
     send_sse_event(session_id, 'shark_speaking', {
         'sharkId': shark_id,
