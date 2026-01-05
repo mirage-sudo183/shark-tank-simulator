@@ -9,79 +9,16 @@
 <body>
   <div class="app">
     <!-- ========================================
-         VIEW 0: Auth / Login
+         VIEW 0: Auth / Login (HIDDEN - No auth version)
          ======================================== -->
-    <div class="view view--auth" id="authView">
-      <div class="auth-container">
-        <div class="auth-header">
-          <div class="auth-logo">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <polygon points="23 7 16 12 23 17 23 7"/>
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-            </svg>
-          </div>
-          <h1 class="auth-title">Shark Tank Simulator</h1>
-          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
-        </div>
-
-        <!-- Login buttons (shown when not logged in) -->
-        <div class="auth-content" id="authLoginContent">
-          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-            Sign in with X (Twitter)
-          </button>
-
-          <p class="auth-note">
-            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
-          </p>
-
-          <div class="auth-divider">
-            <span>or</span>
-          </div>
-
-          <button class="auth-btn auth-btn--guest" id="guestBtn">
-            Continue as Guest
-          </button>
-          <p class="auth-guest-note">
-            Guest pitches won't appear on the leaderboard
-          </p>
-        </div>
-
-        <!-- Logged in state (shown when logged in) -->
-        <div class="auth-content auth-logged-in" id="authLoggedInContent" style="display: none;">
-          <div class="auth-user-info">
-            <img class="auth-user-avatar" id="authUserAvatar" src="" alt="User">
-            <span class="auth-user-name" id="authUserName">@username</span>
-          </div>
-
-          <button class="auth-btn auth-btn--primary" id="continueToFormBtn">
-            Continue to Pitch Form
-          </button>
-
-          <button class="auth-btn auth-btn--secondary" id="authLogoutBtn">
-            Sign Out
-          </button>
-        </div>
-
-        <div class="auth-footer">
-          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 20V10"/>
-              <path d="M18 20V4"/>
-              <path d="M6 20v-4"/>
-            </svg>
-            View Leaderboard
-          </button>
-        </div>
-      </div>
+    <div class="view view--auth" id="authView" style="display: none;">
+      <!-- Auth view removed for no-login version -->
     </div>
 
     <!-- ========================================
          VIEW 1: Entry Form
          ======================================== -->
-    <div class="view view--entry" id="entryView" style="display: none;">
+    <div class="view view--entry" id="entryView">
       <div class="entry-container">
         <!-- User Profile Bar (shown when logged in) -->
         <div class="user-bar" id="userBar" style="display: none;">
@@ -107,8 +44,8 @@
           </div>
         </div>
 
-        <!-- Back to Auth button (always visible) -->
-        <div class="entry-back-row">
+        <!-- Back to Auth button (hidden in no-login version) -->
+        <div class="entry-back-row" style="display: none;">
           <button type="button" class="entry-back-btn" id="backToAuthBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5"/>
@@ -189,8 +126,8 @@
             </div>
           </div>
 
-          <!-- Verification Section (shows when user is logged in and has revenue/users) -->
-          <div class="form-group form-group--verification" id="verificationSection" style="display: none;">
+          <!-- Verification Section (hidden in no-login version) -->
+          <div class="form-group form-group--verification" id="verificationSection" style="display: none !important;">
             <label class="form-label">Verify your metrics (optional)</label>
             <p class="form-hint verification-hint">Verified metrics appear on the leaderboard with a badge</p>
 
@@ -304,15 +241,8 @@
          VIEW 3: Panel (Video Call UI)
          ======================================== -->
     <div class="view view--panel" id="panelView" style="display: none;">
-      <!-- Demo Mode Banner (shown for guests) -->
-      <div id="demoBanner" class="demo-banner" style="display: none;">
-        <div class="demo-banner-content">
-          <span class="demo-badge">DEMO MODE</span>
-          <span class="demo-text">This is a preview. Sign in to pitch for real!</span>
-          <button id="demoSignInBtn" class="demo-cta">
-            Sign in with <span class="x-logo">&#120143;</span>
-          </button>
-        </div>
+      <!-- Demo Mode Banner (hidden in no-login version - everyone gets real AI) -->
+      <div id="demoBanner" class="demo-banner" style="display: none !important;">
       </div>
 
       <!-- Top Header Bar (Light) -->
@@ -547,9 +477,9 @@
     </div>
 
     <!-- ========================================
-         VIEW: Leaderboard
+         VIEW: Leaderboard (hidden in no-login version)
          ======================================== -->
-    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none !important;">
       <div class="leaderboard-container">
         <div class="leaderboard-header">
           <button class="leaderboard-back" id="leaderboardBackBtn">
@@ -598,34 +528,10 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <!-- Load Firebase config from gitignored file first -->
-  <script src="firebase-env.js"></script>
-  <script type="module">
-    import {
-      signInWithTwitter,
-      signOutUser,
-      onAuthChange,
-      getCurrentUser,
-      getIdToken,
-      savePitchResult,
-      getLeaderboard,
-      getUserBestPitch
-    } from './firebase-config.js';
-
-    // Expose Firebase functions to window for app.js
-    window.firebaseAuth = {
-      signInWithTwitter,
-      signOutUser,
-      onAuthChange,
-      getCurrentUser,
-      getIdToken,
-      savePitchResult,
-      getLeaderboard,
-      getUserBestPitch
-    };
-
-    // Dispatch event when Firebase is ready
+  <!-- Firebase SDK removed - No login version -->
+  <script>
+    // No Firebase auth needed in this version
+    window.firebaseAuth = null;
     window.dispatchEvent(new Event('firebase-ready'));
   </script>
   <script src="app.js"></script>

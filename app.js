@@ -175,7 +175,7 @@
           currentUser = null;
           isGuest = false;
           updateAuthUI();
-          showView('authView');
+          showView('entryView'); // NO-LOGIN VERSION: Stay on entry form
         } catch (error) {
           console.error('Logout failed:', error);
         }
@@ -219,27 +219,14 @@
     const leaderboardBackBtn = document.getElementById('leaderboardBackBtn');
     if (leaderboardBackBtn) {
       leaderboardBackBtn.addEventListener('click', () => {
-        if (currentUser || isGuest) {
-          showView('entryView');
-        } else {
-          showView('authView');
-        }
+        // NO-LOGIN VERSION: Always go to entry view
+        showView('entryView');
       });
     }
 
-    // Back to Auth button (entry view)
-    const backToAuthBtn = document.getElementById('backToAuthBtn');
-    if (backToAuthBtn) {
-      backToAuthBtn.addEventListener('click', async () => {
-        // If logged in, sign out first
-        if (currentUser && window.firebaseAuth) {
-          await window.firebaseAuth.signOutUser();
-          currentUser = null;
-        }
-        isGuest = false;
-        showView('authView');
-      });
-    }
+    // Back to Auth button (disabled in no-login version)
+    // const backToAuthBtn = document.getElementById('backToAuthBtn');
+    // Button is hidden via HTML, no listener needed
 
     // Leaderboard tabs
     document.querySelectorAll('.leaderboard-tab').forEach(tab => {
@@ -831,22 +818,7 @@
       // Show transition
       showView('transitionView');
 
-      // DEMO MODE: Guests get a pre-scripted demo instead of real AI sharks
-      if (isGuest) {
-        isDemoMode = true;
-        // Use demo pitch data instead of user input
-        pitchData = { ...DEMO_SCRIPT.pitchData };
-        window.pitchData = pitchData;
-
-        // After transition, show demo panel (no backend calls)
-        setTimeout(() => {
-          showView('panelView');
-          initDemoPanel();
-        }, 2500);
-        return;
-      }
-
-      // AUTHENTICATED USERS: Real AI shark experience
+      // NO-LOGIN VERSION: Everyone gets real AI sharks (no demo mode)
       isDemoMode = false;
 
       // Build headers with auth token if available
@@ -971,9 +943,9 @@
       const signInBtn = document.getElementById('demoSignInBtn');
       if (signInBtn) {
         signInBtn.onclick = () => {
-          // Clean up demo and go to auth
+          // Clean up demo and go to entry
           cleanupDemo();
-          showView('authView');
+          showView('entryView'); // NO-LOGIN VERSION
         };
       }
     }
@@ -1099,7 +1071,7 @@
     document.getElementById('demoEndSignIn').onclick = () => {
       cleanupDemo();
       overlay.remove();
-      showView('authView');
+      showView('entryView'); // NO-LOGIN VERSION
     };
 
     document.getElementById('demoEndReplay').onclick = () => {
@@ -2700,9 +2672,9 @@
   // ========================================
   function init() {
     initEntryForm();
-    initAuth();
-    // Auth view is shown by default now
-    showView('authView');
+    // NO-LOGIN VERSION: Skip auth, go directly to entry form
+    // initAuth(); // Auth disabled in no-login version
+    showView('entryView');
   }
 
   if (document.readyState === 'loading') {
