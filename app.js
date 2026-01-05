@@ -1150,6 +1150,9 @@
     // Initialize transcript toggle
     initTranscriptToggle();
 
+    // Initialize offers panel tabs
+    initOffersTabs();
+
     // Initialize TTS audio player
     initAudioPlayer();
 
@@ -2128,13 +2131,77 @@
   }
 
   // ========================================
+  // Offers Panel Tab Management
+  // ========================================
+  const OFFER_DURATION = 60; // seconds
+  let offerTimers = {}; // Track countdown timers by offer ID
+
+  function initOffersTabs() {
+    const chatTabBtn = document.getElementById('chatTabBtn');
+    const offersTabBtn = document.getElementById('offersTabBtn');
+
+    if (chatTabBtn) {
+      chatTabBtn.addEventListener('click', () => switchTab('chat'));
+    }
+    if (offersTabBtn) {
+      offersTabBtn.addEventListener('click', () => switchTab('offers'));
+    }
+  }
+
+  function switchTab(tab) {
+    const chatMessages = document.getElementById('chatMessages');
+    const offersPanel = document.getElementById('offersPanel');
+    const chatTabBtn = document.getElementById('chatTabBtn');
+    const offersTabBtn = document.getElementById('offersTabBtn');
+
+    if (tab === 'chat') {
+      chatMessages.style.display = 'flex';
+      offersPanel.style.display = 'none';
+      chatTabBtn.classList.add('chat-tab--active');
+      offersTabBtn.classList.remove('chat-tab--active');
+    } else {
+      chatMessages.style.display = 'none';
+      offersPanel.style.display = 'flex';
+      chatTabBtn.classList.remove('chat-tab--active');
+      offersTabBtn.classList.add('chat-tab--active');
+    }
+  }
+
+  function updateOffersBadge() {
+    const badge = document.getElementById('offersBadge');
+    const activeOffers = pendingOffers.filter(o => o.status !== 'expired' && o.status !== 'accepted' && o.status !== 'declined');
+    if (badge) {
+      if (activeOffers.length > 0) {
+        badge.textContent = activeOffers.length;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    // Update empty state
+    const offersEmpty = document.getElementById('offersEmpty');
+    const offersList = document.getElementById('offersList');
+    if (offersEmpty && offersList) {
+      offersEmpty.style.display = activeOffers.length === 0 ? 'block' : 'none';
+    }
+  }
+
+  // ========================================
   // Offer Handling
   // ========================================
   function addOfferToUI(offer) {
     const messagesContainer = document.getElementById('chatMessages');
     if (!messagesContainer) return;
 
+    // Add timestamp for expiration tracking
+    offer.createdAt = Date.now();
+    offer.status = 'active';
     pendingOffers.push(offer);
+
+    // Add to offers panel with timer
+    addOfferToPanelUI(offer);
+    updateOffersBadge();
 
     const offerCard = document.createElement('div');
     offerCard.className = 'offer-card';
@@ -2164,6 +2231,7 @@
         <button class="offer-btn offer-btn--accept" onclick="window.acceptOffer('${offer.id}')">Accept</button>
         <button class="offer-btn offer-btn--counter" onclick="window.showCounterModal('${offer.id}')">Counter</button>
         <button class="offer-btn offer-btn--decline" onclick="window.declineOffer('${offer.id}')">Decline</button>
+        <button class="offer-btn offer-btn--reply" onclick="window.replyToShark('${offer.sharkName}')">Reply</button>
       </div>
     `;
 
@@ -2171,11 +2239,154 @@
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
 
+  function addOfferToPanelUI(offer) {
+    const offersList = document.getElementById('offersList');
+    if (!offersList) return;
+
+    const card = document.createElement('div');
+    card.className = 'offer-panel-card';
+    card.id = `panel-offer-${offer.id}`;
+
+    let termsText = `$${offer.amount.toLocaleString()} for ${offer.equity}%`;
+    if (offer.royalty) {
+      termsText += ` + $${offer.royalty}/unit royalty`;
+    }
+
+    card.innerHTML = `
+      <div class="offer-panel-header">
+        <span class="offer-panel-shark">${offer.sharkName}</span>
+        <span class="offer-panel-timer" id="timer-${offer.id}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="timer-seconds">${OFFER_DURATION}s</span>
+        </span>
+      </div>
+      <div class="offer-panel-terms">
+        <span class="amount">${termsText}</span>
+        ${offer.conditions?.length ? `<br><small>${offer.conditions.join(', ')}</small>` : ''}
+      </div>
+      <div class="offer-panel-actions">
+        <button class="offer-btn offer-btn--accept" onclick="window.acceptOffer('${offer.id}')">Accept</button>
+        <button class="offer-btn offer-btn--counter" onclick="window.showCounterModal('${offer.id}')">Counter</button>
+        <button class="offer-btn offer-btn--decline" onclick="window.declineOffer('${offer.id}')">Decline</button>
+      </div>
+    `;
+
+    offersList.appendChild(card);
+
+    // Start countdown timer
+    startOfferTimer(offer.id);
+  }
+
+  function startOfferTimer(offerId) {
+    const offer = pendingOffers.find(o => o.id === offerId);
+    if (!offer) return;
+
+    // Clear any existing timer
+    if (offerTimers[offerId]) {
+      clearInterval(offerTimers[offerId]);
+    }
+
+    offerTimers[offerId] = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - offer.createdAt) / 1000);
+      const remaining = OFFER_DURATION - elapsed;
+
+      const timerEl = document.getElementById(`timer-${offerId}`);
+      if (timerEl) {
+        const secondsSpan = timerEl.querySelector('.timer-seconds');
+        if (secondsSpan) {
+          secondsSpan.textContent = `${Math.max(0, remaining)}s`;
+        }
+
+        // Update timer styling based on remaining time
+        timerEl.classList.remove('expiring', 'critical');
+        if (remaining <= 15 && remaining > 5) {
+          timerEl.classList.add('expiring');
+        } else if (remaining <= 5) {
+          timerEl.classList.add('critical');
+        }
+      }
+
+      // Handle expiration
+      if (remaining <= 0) {
+        handleOfferExpired(offerId);
+      }
+    }, 1000);
+  }
+
+  function handleOfferExpired(offerId) {
+    const offer = pendingOffers.find(o => o.id === offerId);
+    if (!offer || offer.status !== 'active') return;
+
+    // Stop timer
+    if (offerTimers[offerId]) {
+      clearInterval(offerTimers[offerId]);
+      delete offerTimers[offerId];
+    }
+
+    offer.status = 'expired';
+
+    // Remove from panel
+    const panelCard = document.getElementById(`panel-offer-${offerId}`);
+    if (panelCard) {
+      panelCard.remove();
+    }
+
+    // Disable buttons in chat
+    const chatCard = document.querySelector(`[data-offer-id="${offerId}"]`);
+    if (chatCard) {
+      chatCard.querySelectorAll('.offer-btn').forEach(btn => btn.disabled = true);
+      chatCard.classList.add('offer-card--expired');
+    }
+
+    updateOffersBadge();
+
+    // Notify user
+    sendSystemMessage(`${offer.sharkName}'s offer has expired.`);
+
+    // Notify backend about expiration (backend will decide if shark goes out)
+    if (sessionId) {
+      fetch(`${API_BASE}/api/session/${sessionId}/offer-expired`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offerId, sharkId: offer.sharkId })
+      }).catch(err => console.log('Failed to notify backend of offer expiration'));
+    }
+  }
+
+  function removeOfferFromPanel(offerId) {
+    const offer = pendingOffers.find(o => o.id === offerId);
+    if (offer) {
+      offer.status = 'handled';
+    }
+
+    // Stop timer
+    if (offerTimers[offerId]) {
+      clearInterval(offerTimers[offerId]);
+      delete offerTimers[offerId];
+    }
+
+    // Remove from panel
+    const panelCard = document.getElementById(`panel-offer-${offerId}`);
+    if (panelCard) {
+      panelCard.remove();
+    }
+
+    updateOffersBadge();
+  }
+
   async function acceptOffer(offerId) {
     const offer = pendingOffers.find(o => o.id === offerId);
     if (!offer) return;
 
-    // Disable offer buttons
+    offer.status = 'accepted';
+
+    // Remove from offers panel
+    removeOfferFromPanel(offerId);
+
+    // Disable offer buttons in chat
     const offerCard = document.querySelector(`[data-offer-id="${offerId}"]`);
     if (offerCard) {
       offerCard.querySelectorAll('.offer-btn').forEach(btn => btn.disabled = true);
@@ -2185,13 +2396,29 @@
 
     if (sessionId) {
       try {
-        await fetch(`${API_BASE}/api/session/${sessionId}/offer-response`, {
+        const response = await fetch(`${API_BASE}/api/session/${sessionId}/offer-response`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ offerId, action: 'accept' })
         });
+        const data = await response.json();
+
+        // Fallback: if SSE doesn't deliver deal_closed, handle it here
+        if (data.result === 'deal_closed' && data.offer) {
+          // Give SSE a moment to deliver, then force close if still not closed
+          setTimeout(() => {
+            if (currentPhase !== 'closed') {
+              console.log('SSE did not deliver deal_closed, using API response fallback');
+              showDealClosed({
+                sharkId: offer.sharkId,
+                sharkName: offer.sharkName,
+                offer: data.offer
+              });
+            }
+          }, 1000);
+        }
       } catch (err) {
-        console.log('Failed to send acceptance to backend');
+        console.log('Failed to send acceptance to backend:', err);
       }
     }
   }
@@ -2200,7 +2427,12 @@
     const offer = pendingOffers.find(o => o.id === offerId);
     if (!offer) return;
 
-    // Disable offer buttons
+    offer.status = 'declined';
+
+    // Remove from offers panel
+    removeOfferFromPanel(offerId);
+
+    // Disable offer buttons in chat
     const offerCard = document.querySelector(`[data-offer-id="${offerId}"]`);
     if (offerCard) {
       offerCard.querySelectorAll('.offer-btn').forEach(btn => btn.disabled = true);
@@ -2277,6 +2509,17 @@
       } catch (err) {
         console.log('Failed to send counter to backend');
       }
+    }
+  }
+
+  function replyToShark(sharkName) {
+    // Focus the chat input and prefill with shark name for direct reply
+    const chatInput = document.getElementById('chatInput');
+    if (chatInput) {
+      chatInput.value = `@${sharkName}: `;
+      chatInput.focus();
+      // Move cursor to end
+      chatInput.setSelectionRange(chatInput.value.length, chatInput.value.length);
     }
   }
 
@@ -2660,6 +2903,7 @@
   window.declineOffer = declineOffer;
   window.showCounterModal = showCounterModal;
   window.hideCounterModal = hideCounterModal;
+  window.replyToShark = replyToShark;
   window.submitCounterOffer = submitCounterOffer;
   window.getSessionId = () => sessionId;
   window.getSharkStates = () => sharkStates;

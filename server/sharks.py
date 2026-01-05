@@ -481,60 +481,35 @@ class SharkManager:
 
         return offer
 
-    def parse_offer_from_response(self, shark_id, response, pitch_data):
-        """Try to extract offer terms from a shark's response."""
+    def parse_offer_from_response(self, shark_id, response, pitch_data, confidence=70):
+        """
+        Detect if response contains an offer and generate consistent terms.
+
+        Instead of parsing exact values from AI text (which can be inconsistent),
+        we detect offer intent and use generate_offer_terms for the actual values.
+        This ensures the offer card matches what the shark "meant" to offer.
+        """
         response_lower = response.lower()
 
         # Check if this looks like an offer
         offer_indicators = ['offer', "i'll give you", 'deal:', 'here\'s what i\'ll do',
-                           'i\'m in for', 'investment of']
+                           'i\'m in for', 'investment of', "here's my offer",
+                           "i'll do", "let me make you"]
 
         if not any(ind in response_lower for ind in offer_indicators):
             return None
 
-        # Try to extract amount
-        amount_match = re.search(r'\$?([\d,]+)\s*(?:thousand|k)?', response)
-        amount = None
-        if amount_match:
-            amount_str = amount_match.group(1).replace(',', '')
-            try:
-                amount = int(amount_str)
-                if 'thousand' in response_lower or 'k' in response_lower[amount_match.end():amount_match.end()+5]:
-                    amount *= 1000
-            except ValueError:
-                pass
+        # Also make sure they're not going out in the same breath
+        out_indicators = ["i'm out", "im out", "i am out", "count me out"]
+        if any(ind in response_lower for ind in out_indicators):
+            return None
 
-        # Try to extract equity
-        equity_match = re.search(r'(\d+)\s*(?:%|percent)', response_lower)
-        equity = None
-        if equity_match:
-            try:
-                equity = int(equity_match.group(1))
-            except ValueError:
-                pass
+        # Offer detected - generate consistent terms based on shark personality
+        # This ensures the offer card values are predictable and match shark behavior
+        offer = self.generate_offer_terms(shark_id, pitch_data, confidence)
 
-        # Try to extract royalty (for Victor)
-        royalty = None
-        royalty_until = None
-        if shark_id == 'victor' or 'royalty' in response_lower:
-            royalty_match = re.search(r'\$?([\d.]+)\s*(?:per unit|royalty)', response_lower)
-            if royalty_match:
-                try:
-                    royalty = float(royalty_match.group(1))
-                    royalty_until = pitch_data.get('amountRaising', 100000)
-                except ValueError:
-                    pass
+        # Add unique ID for offer tracking
+        import uuid
+        offer['id'] = str(uuid.uuid4())[:8]
 
-        # If we found meaningful terms, create an offer
-        if amount or equity:
-            return {
-                'sharkId': shark_id,
-                'sharkName': self.get_shark_name(shark_id),
-                'amount': amount or pitch_data.get('amountRaising', 100000),
-                'equity': equity or pitch_data.get('equityPercent', 10) + 5,
-                'royalty': royalty,
-                'royaltyUntil': royalty_until,
-                'conditions': []
-            }
-
-        return None
+        return offer
