@@ -278,9 +278,21 @@
 
           <!-- Submit -->
           <button type="submit" class="entry-submit">Enter the Panel</button>
-          
-          <!-- Skip button (testing only) -->
-          <button type="button" class="entry-skip" id="skipBtn">Skip to Panel (Dev)</button>
+
+          <!-- Quick Test section - skips pitch, starts with offer -->
+          <div class="quick-test-section">
+            <div class="quick-test-label">Quick Test Mode</div>
+            <div class="quick-test-controls">
+              <select id="quickTestShark" class="quick-test-select">
+                <option value="victor">Victor Slate (Royalty Deals)</option>
+                <option value="marcus">Marcus Kellan (Tech/Equity)</option>
+                <option value="elena">Elena Brooks (Retail/Milestones)</option>
+                <option value="richard">Richard Sterling (Brand/Vision)</option>
+                <option value="daniel">Daniel Chen (Mentor/Stages)</option>
+              </select>
+              <button type="button" class="entry-skip" id="skipBtn">🧪 Test Offer</button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -536,6 +548,13 @@
         </div>
         <p class="modal-subtitle">Make a counter offer to <span id="counterSharkName">the investor</span></p>
         <input type="hidden" id="counterOfferId" value="">
+        <input type="hidden" id="counterDealType" value="cash_equity">
+
+        <!-- Original offer display -->
+        <div class="original-offer-display" id="originalOfferDisplay">
+          <div class="original-offer-label">Their offer:</div>
+          <div class="original-offer-terms" id="originalOfferTerms">$100,000 for 10%</div>
+        </div>
 
         <div class="modal-form">
           <div class="form-group">
@@ -549,9 +568,19 @@
           <div class="form-group">
             <label class="form-label" for="counterEquity">Equity you'll give</label>
             <div class="input-with-suffix">
-              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="1" max="100">
+              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="0" max="100">
               <span class="input-suffix">%</span>
             </div>
+          </div>
+
+          <!-- Royalty fields - shown for royalty deals -->
+          <div class="form-group royalty-fields" id="royaltyFields" style="display: none;">
+            <label class="form-label" for="counterRoyalty">Royalty per unit</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="counterRoyalty" value="2" min="0" step="0.5">
+            </div>
+            <p class="form-hint">Amount per unit until investment is recouped</p>
           </div>
         </div>
 

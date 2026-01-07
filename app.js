@@ -888,28 +888,127 @@
       }, 2500);
     });
 
-    // Skip button (dev/testing)
+    // Skip button (dev/testing) - Quick Test Mode
     const skipBtn = document.getElementById('skipBtn');
     if (skipBtn) {
-      skipBtn.addEventListener('click', () => {
-        // Use dummy data
-        pitchData = {
-          companyName: 'Test Company',
-          amountRaising: 500000,
-          equityPercent: 10,
-          companyDescription: 'A test company for development purposes.',
-          whyNow: 'Testing the panel flow.',
-          proofType: 'idea',
-          proofValue: null,
-          expectedPushback: null
-        };
-        window.pitchData = pitchData;
+      skipBtn.addEventListener('click', async () => {
+        skipBtn.disabled = true;
+        skipBtn.textContent = 'Starting...';
 
-        // Skip transition, go directly to panel
-        showView('panelView');
-        initPanel();
+        // Get selected shark from dropdown
+        const sharkSelect = document.getElementById('quickTestShark');
+        const selectedShark = sharkSelect ? sharkSelect.value : 'victor';
+
+        try {
+          // Call the quick test endpoint with selected shark
+          const response = await fetch(`${API_BASE}/api/test/quick-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sharkId: selectedShark })
+          });
+
+          const data = await response.json();
+
+          if (data.sessionId) {
+            // Set up session data
+            sessionId = data.sessionId;
+            pitchData = data.pitchData;
+            window.pitchData = pitchData;
+            currentPhase = 'qa';
+
+            // Initialize shark states from response
+            sharkStates = {};
+            data.sharks.forEach(shark => {
+              sharkStates[shark.id] = {
+                ...shark,
+                status: shark.status || 'live',
+                confidence: shark.confidence || 85
+              };
+            });
+
+            // Go directly to panel (skip transition)
+            showView('panelView');
+            initPanelWithSession(data);
+          } else {
+            throw new Error(data.error || 'Failed to create test session');
+          }
+        } catch (error) {
+          console.error('Quick test failed:', error);
+          alert('Quick test failed: ' + error.message);
+          skipBtn.disabled = false;
+          skipBtn.textContent = '🧪 Test Offer';
+        }
       });
     }
+  }
+
+  /**
+   * Initialize panel with an existing session (for quick test mode)
+   */
+  function initPanelWithSession(sessionData) {
+    console.log('Quick test mode - session:', sessionData.sessionId);
+
+    // Update meeting title
+    const meetingTitle = document.getElementById('meetingTitle');
+    if (meetingTitle && pitchData) {
+      meetingTitle.textContent = `${pitchData.companyName} — Q&A Phase`;
+    }
+
+    // Initialize participants (sharks grid)
+    initParticipants();
+
+    // Start timer
+    remainingSeconds = TOTAL_SESSION_TIME;
+    currentPhase = 'qa';
+    startTimer();
+
+    // Initialize webcam
+    initWebcam();
+
+    // Initialize TTS audio player
+    initAudioPlayer();
+
+    // Initialize chat (enable input)
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    if (chatInput) chatInput.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
+
+    // Connect to SSE for real-time events
+    connectSSE(sessionData.sessionId);
+
+    // Update phase indicator
+    updatePhaseIndicator();
+
+    // Add test mode banner
+    const banner = document.createElement('div');
+    banner.className = 'test-mode-banner';
+    banner.innerHTML = `
+      <span>🧪 Quick Test Mode</span>
+      <span style="opacity: 0.7; margin-left: 8px;">Offer coming in ~3 seconds...</span>
+    `;
+    banner.style.cssText = `
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+    `;
+    document.body.appendChild(banner);
+
+    // Remove banner after 5 seconds
+    setTimeout(() => {
+      banner.style.opacity = '0';
+      banner.style.transition = 'opacity 0.3s';
+      setTimeout(() => banner.remove(), 300);
+    }, 5000);
   }
 
   // ========================================
@@ -1348,6 +1447,27 @@
       case 'phase_change':
         currentPhase = event.data.phase;
         updatePhaseIndicator();
+        break;
+
+      // New deal flow events
+      case 'bidding_war_started':
+        showBiddingWarIndicator(event.data);
+        break;
+
+      case 'final_offer_countdown':
+        showFinalOfferCountdown(event.data);
+        break;
+
+      case 'proof_satisfied':
+        showProofSatisfied(event.data);
+        break;
+
+      case 'deal_recap':
+        showDealRecap(event.data);
+        break;
+
+      case 'session_complete':
+        showSessionComplete(event.data);
         break;
 
       default:
@@ -2161,7 +2281,7 @@
   // ========================================
   // Offers Panel Tab Management
   // ========================================
-  const OFFER_DURATION = 60; // seconds
+  const OFFER_DURATION = 300; // 5 minutes to consider an offer
   let offerTimers = {}; // Track countdown timers by offer ID
 
   function initOffersTabs() {
@@ -2218,6 +2338,16 @@
   // ========================================
   // Offer Handling
   // ========================================
+  // Deal type display names
+  const DEAL_TYPE_LABELS = {
+    'cash_equity': 'Cash for Equity',
+    'safe_cap': 'SAFE Note',
+    'safe_milestone': 'SAFE + Milestone',
+    'tranche': 'Tranche Investment',
+    'royalty': 'Royalty Deal',
+    'no_offer': 'Conditional'
+  };
+
   function addOfferToUI(offer) {
     const messagesContainer = document.getElementById('chatMessages');
     if (!messagesContainer) return;
@@ -2235,22 +2365,72 @@
     offerCard.className = 'offer-card';
     offerCard.dataset.offerId = offer.id;
 
-    let termsHtml = `<span class="offer-amount">$${offer.amount.toLocaleString()}</span>
-                     <span class="offer-for">for</span>
-                     <span class="offer-equity">${offer.equity}%</span>`;
+    // Determine deal type display
+    const dealType = offer.deal_type || 'cash_equity';
+    const dealLabel = DEAL_TYPE_LABELS[dealType] || 'Offer';
 
-    if (offer.royalty) {
-      termsHtml += `<span class="offer-royalty">+ $${offer.royalty}/unit until $${offer.royaltyUntil?.toLocaleString() || offer.amount.toLocaleString()} recouped</span>`;
+    // Build terms HTML based on deal type
+    let termsHtml = '';
+
+    if (dealType === 'cash_equity' || !offer.terms) {
+      // Standard cash for equity
+      termsHtml = `<span class="offer-amount">$${(offer.amount || 0).toLocaleString()}</span>
+                   <span class="offer-for">for</span>
+                   <span class="offer-equity">${offer.equity || 0}%</span>`;
+    } else if (dealType === 'safe_cap' && offer.terms) {
+      // SAFE with valuation cap
+      termsHtml = `<span class="offer-amount">$${(offer.terms.amount || offer.amount || 0).toLocaleString()}</span>
+                   <span class="offer-for">SAFE with</span>
+                   <span class="offer-equity">$${(offer.terms.valuation_cap || 0).toLocaleString()} cap</span>`;
+    } else if (dealType === 'safe_milestone' && offer.terms) {
+      // SAFE with milestone
+      termsHtml = `<span class="offer-amount">$${(offer.terms.amount || offer.amount || 0).toLocaleString()}</span>
+                   <span class="offer-for">converts at</span>
+                   <span class="offer-equity">$${(offer.terms.valuation_cap || 0).toLocaleString()} cap</span>`;
+    } else if (dealType === 'tranche' && offer.terms?.tranches) {
+      // Tranche investment
+      const firstTranche = offer.terms.tranches[0];
+      termsHtml = `<span class="offer-amount">$${(firstTranche?.amount || 0).toLocaleString()} now</span>
+                   <span class="offer-for">of</span>
+                   <span class="offer-equity">$${(offer.terms.total_amount || offer.amount || 0).toLocaleString()} total</span>`;
+    } else if (dealType === 'royalty') {
+      // Royalty deal
+      termsHtml = `<span class="offer-amount">$${(offer.amount || 0).toLocaleString()}</span>
+                   <span class="offer-for">for</span>
+                   <span class="offer-equity">${offer.equity || 0}%</span>`;
+    } else {
+      // Fallback
+      termsHtml = `<span class="offer-amount">$${(offer.amount || 0).toLocaleString()}</span>
+                   <span class="offer-for">for</span>
+                   <span class="offer-equity">${offer.equity || 0}%</span>`;
     }
 
+    // Add royalty info if present
+    if (offer.royalty || (offer.terms?.royalty_percent)) {
+      const royaltyPct = offer.royalty || offer.terms?.royalty_percent;
+      const royaltyCap = offer.royaltyUntil || offer.terms?.royalty_cap || offer.amount;
+      termsHtml += `<span class="offer-royalty">+ $${royaltyPct}/unit until $${royaltyCap?.toLocaleString()} recouped</span>`;
+    }
+
+    // Add conditions if present
     if (offer.conditions && offer.conditions.length > 0) {
-      termsHtml += `<span class="offer-conditions">${offer.conditions.join(', ')}</span>`;
+      termsHtml += `<div class="offer-conditions"><strong>Conditions:</strong> ${offer.conditions.join(', ')}</div>`;
+    }
+
+    // Add rationale if present
+    if (offer.rationale) {
+      termsHtml += `<div class="offer-rationale"><em>${offer.rationale}</em></div>`;
+    }
+
+    // Add implied valuation if present
+    if (offer.implied_valuation && offer.implied_valuation > 0) {
+      termsHtml += `<div class="offer-valuation">Implied valuation: $${offer.implied_valuation.toLocaleString()}</div>`;
     }
 
     offerCard.innerHTML = `
       <div class="offer-header">
         <span class="offer-shark">${offer.sharkName}</span>
-        <span class="offer-badge">OFFER</span>
+        <span class="offer-badge offer-badge--${dealType}">${dealLabel}</span>
       </div>
       <div class="offer-terms">
         ${termsHtml}
@@ -2275,25 +2455,43 @@
     card.className = 'offer-panel-card';
     card.id = `panel-offer-${offer.id}`;
 
-    let termsText = `$${offer.amount.toLocaleString()} for ${offer.equity}%`;
-    if (offer.royalty) {
-      termsText += ` + $${offer.royalty}/unit royalty`;
+    // Determine deal type
+    const dealType = offer.deal_type || 'cash_equity';
+    const dealLabel = DEAL_TYPE_LABELS[dealType] || 'Offer';
+
+    // Build terms text based on deal type
+    let termsText = '';
+    if (dealType === 'safe_cap' && offer.terms?.valuation_cap) {
+      termsText = `$${(offer.terms.amount || offer.amount || 0).toLocaleString()} SAFE @ $${offer.terms.valuation_cap.toLocaleString()} cap`;
+    } else if (dealType === 'safe_milestone' && offer.terms?.valuation_cap) {
+      termsText = `$${(offer.terms.amount || offer.amount || 0).toLocaleString()} SAFE + milestone`;
+    } else if (dealType === 'tranche' && offer.terms?.total_amount) {
+      termsText = `$${offer.terms.total_amount.toLocaleString()} in tranches`;
+    } else {
+      termsText = `$${(offer.amount || 0).toLocaleString()} for ${offer.equity || 0}%`;
+    }
+
+    if (offer.royalty || offer.terms?.royalty_percent) {
+      const royaltyPct = offer.royalty || offer.terms?.royalty_percent;
+      termsText += ` + $${royaltyPct}/unit royalty`;
     }
 
     card.innerHTML = `
       <div class="offer-panel-header">
         <span class="offer-panel-shark">${offer.sharkName}</span>
+        <span class="offer-panel-type">${dealLabel}</span>
         <span class="offer-panel-timer" id="timer-${offer.id}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"/>
             <polyline points="12 6 12 12 16 14"/>
           </svg>
-          <span class="timer-seconds">${OFFER_DURATION}s</span>
+          <span class="timer-seconds">${Math.floor(OFFER_DURATION / 60)}:00</span>
         </span>
       </div>
       <div class="offer-panel-terms">
         <span class="amount">${termsText}</span>
-        ${offer.conditions?.length ? `<br><small>${offer.conditions.join(', ')}</small>` : ''}
+        ${offer.conditions?.length ? `<div class="conditions"><small>${offer.conditions.join(', ')}</small></div>` : ''}
+        ${offer.rationale ? `<div class="rationale"><em>${offer.rationale}</em></div>` : ''}
       </div>
       <div class="offer-panel-actions">
         <button class="offer-btn offer-btn--accept" onclick="window.acceptOffer('${offer.id}')">Accept</button>
@@ -2325,14 +2523,16 @@
       if (timerEl) {
         const secondsSpan = timerEl.querySelector('.timer-seconds');
         if (secondsSpan) {
-          secondsSpan.textContent = `${Math.max(0, remaining)}s`;
+          const mins = Math.floor(Math.max(0, remaining) / 60);
+          const secs = Math.max(0, remaining) % 60;
+          secondsSpan.textContent = mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`;
         }
 
         // Update timer styling based on remaining time
         timerEl.classList.remove('expiring', 'critical');
-        if (remaining <= 15 && remaining > 5) {
+        if (remaining <= 60 && remaining > 15) {
           timerEl.classList.add('expiring');
-        } else if (remaining <= 5) {
+        } else if (remaining <= 15) {
           timerEl.classList.add('critical');
         }
       }
@@ -2431,6 +2631,23 @@
         });
         const data = await response.json();
 
+        // Check for errors from backend
+        if (!response.ok || data.error) {
+          console.error('Acceptance failed:', data.error || response.statusText);
+          sendSystemMessage(`Error: ${data.error || 'Failed to process acceptance'}. Closing deal manually.`);
+          // Force close the deal with the offer we have locally
+          setTimeout(() => {
+            if (currentPhase !== 'closed') {
+              showDealClosed({
+                sharkId: offer.sharkId,
+                sharkName: offer.sharkName,
+                offer: offer
+              });
+            }
+          }, 500);
+          return;
+        }
+
         // Fallback: if SSE doesn't deliver deal_closed, handle it here
         if (data.result === 'deal_closed' && data.offer) {
           // Give SSE a moment to deliver, then force close if still not closed
@@ -2447,6 +2664,17 @@
         }
       } catch (err) {
         console.log('Failed to send acceptance to backend:', err);
+        // Force close the deal with the offer we have locally
+        sendSystemMessage(`Network error, closing deal manually.`);
+        setTimeout(() => {
+          if (currentPhase !== 'closed') {
+            showDealClosed({
+              sharkId: offer.sharkId,
+              sharkName: offer.sharkName,
+              offer: offer
+            });
+          }
+        }, 500);
       }
     }
   }
@@ -2489,11 +2717,45 @@
     const modal = document.getElementById('counterOfferModal');
     if (!modal) return;
 
-    // Set current values
-    document.getElementById('counterAmount').value = offer.amount;
-    document.getElementById('counterEquity').value = Math.max(offer.equity - 5, 1);
+    // Display original offer terms
+    const originalTermsEl = document.getElementById('originalOfferTerms');
+    if (originalTermsEl) {
+      let termsText = `$${(offer.amount || 0).toLocaleString()} for ${offer.equity || 0}%`;
+      if (offer.royalty) {
+        termsText += ` + $${offer.royalty}/unit royalty`;
+      }
+      if (offer.deal_type && offer.deal_type !== 'cash_equity') {
+        const dealLabels = {
+          'royalty': 'Royalty Deal',
+          'safe_cap': 'SAFE Note',
+          'safe_milestone': 'SAFE + Milestone',
+          'tranche': 'Tranche Investment'
+        };
+        termsText += ` (${dealLabels[offer.deal_type] || offer.deal_type})`;
+      }
+      originalTermsEl.textContent = termsText;
+    }
+
+    // Set form values - start with their offer as base
+    document.getElementById('counterAmount').value = offer.amount || 100000;
+    document.getElementById('counterEquity').value = Math.max((offer.equity || 10) - 5, 0);
     document.getElementById('counterOfferId').value = offerId;
     document.getElementById('counterSharkName').textContent = offer.sharkName;
+
+    // Handle royalty deals
+    const dealType = offer.deal_type || 'cash_equity';
+    document.getElementById('counterDealType').value = dealType;
+
+    const royaltyFields = document.getElementById('royaltyFields');
+    if (royaltyFields) {
+      if (dealType === 'royalty' || offer.royalty) {
+        royaltyFields.style.display = 'block';
+        // Start with lower royalty as counter
+        document.getElementById('counterRoyalty').value = Math.max((offer.royalty || 2) - 0.5, 0.5);
+      } else {
+        royaltyFields.style.display = 'none';
+      }
+    }
 
     modal.style.display = 'flex';
   }
@@ -2509,6 +2771,14 @@
     const offerId = document.getElementById('counterOfferId').value;
     const amount = parseInt(document.getElementById('counterAmount').value);
     const equity = parseInt(document.getElementById('counterEquity').value);
+    const dealType = document.getElementById('counterDealType').value;
+
+    // Get royalty if it's a royalty deal
+    let royalty = null;
+    const royaltyInput = document.getElementById('counterRoyalty');
+    if (royaltyInput && document.getElementById('royaltyFields').style.display !== 'none') {
+      royalty = parseFloat(royaltyInput.value);
+    }
 
     hideCounterModal();
 
@@ -2521,17 +2791,27 @@
       offerCard.querySelectorAll('.offer-btn').forEach(btn => btn.disabled = true);
     }
 
-    sendUserMessage(`Counter offer to ${offer.sharkName}: $${amount.toLocaleString()} for ${equity}%`);
+    // Build counter message
+    let counterMsg = `Counter offer to ${offer.sharkName}: $${amount.toLocaleString()} for ${equity}%`;
+    if (royalty !== null) {
+      counterMsg += ` with $${royalty}/unit royalty`;
+    }
+    sendUserMessage(counterMsg);
 
     if (sessionId) {
       try {
+        const counterTerms = { amount, equity };
+        if (royalty !== null) {
+          counterTerms.royalty = royalty;
+        }
+
         await fetch(`${API_BASE}/api/session/${sessionId}/offer-response`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             offerId,
             action: 'counter',
-            counterTerms: { amount, equity }
+            counterTerms
           })
         });
       } catch (err) {
@@ -2552,6 +2832,12 @@
   }
 
   function showDealClosed(data) {
+    // Prevent duplicate overlays
+    if (document.querySelector('.ending-overlay--success')) {
+      console.log('Deal overlay already shown, skipping duplicate');
+      return;
+    }
+
     // Stop the timer
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -2570,9 +2856,16 @@
     // Play success music
     playSuccessMusic();
 
+    // Build royalty text if present
+    let royaltyText = '';
+    if (offer.royalty) {
+      royaltyText = `<div class="deal-royalty">+ $${offer.royalty}/unit royalty</div>`;
+    }
+
     // Show success overlay
     const overlay = document.createElement('div');
     overlay.className = 'ending-overlay ending-overlay--success';
+    overlay.id = 'dealClosedOverlay';
     overlay.innerHTML = `
       <div class="ending-content">
         <div class="ending-icon">🎉</div>
@@ -2581,16 +2874,207 @@
         <div class="deal-details">
           <div class="deal-shark">${data.sharkName}</div>
           <div class="deal-terms">
-            <span class="deal-amount">$${offer.amount.toLocaleString()}</span>
+            <span class="deal-amount">$${(offer.amount || 0).toLocaleString()}</span>
             <span class="deal-for">for</span>
-            <span class="deal-equity">${offer.equity}%</span>
+            <span class="deal-equity">${offer.equity || 0}%</span>
           </div>
-          ${offer.royalty ? `<div class="deal-royalty">+ $${offer.royalty}/unit royalty</div>` : ''}
+          ${royaltyText}
         </div>
         <button class="ending-btn" onclick="location.reload()">New Pitch</button>
       </div>
     `;
     document.body.appendChild(overlay);
+
+    // Ensure overlay stays on top
+    overlay.style.zIndex = '9999';
+  }
+
+  // ========================================
+  // New Deal Flow UI Functions
+  // ========================================
+
+  function showBiddingWarIndicator(data) {
+    // Show notification that bidding war has started
+    const notification = document.createElement('div');
+    notification.className = 'bidding-war-notification';
+    notification.innerHTML = `
+      <div class="bidding-war-content">
+        <span class="bidding-war-icon">⚔️</span>
+        <span class="bidding-war-text">BIDDING WAR! ${data.activeOffers?.length || 2} sharks competing!</span>
+      </div>
+    `;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #ff6b6b, #ffa500);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      z-index: 1000;
+      animation: slideDown 0.3s ease, pulse 1s infinite;
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    `;
+    document.body.appendChild(notification);
+
+    // Remove after 5 seconds
+    setTimeout(() => {
+      notification.style.animation = 'slideUp 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 5000);
+
+    // Also update offers tab to highlight competing offers
+    const offersTab = document.querySelector('[data-tab="offers"]');
+    if (offersTab) {
+      offersTab.style.animation = 'pulse 0.5s ease 3';
+    }
+  }
+
+  function showFinalOfferCountdown(data) {
+    // Show countdown timer for final offer
+    const countdownOverlay = document.createElement('div');
+    countdownOverlay.className = 'final-offer-countdown';
+    countdownOverlay.id = 'finalOfferCountdown';
+
+    let secondsLeft = data.countdownSeconds || 30;
+
+    countdownOverlay.innerHTML = `
+      <div class="countdown-content">
+        <div class="countdown-header">⏰ FINAL OFFER from ${data.sharkName}</div>
+        <div class="countdown-timer">${secondsLeft}</div>
+        <div class="countdown-message">Accept now or the offer expires!</div>
+      </div>
+    `;
+    countdownOverlay.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: linear-gradient(135deg, #2c3e50, #3498db);
+      color: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      z-index: 999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    `;
+
+    document.body.appendChild(countdownOverlay);
+
+    // Update countdown every second
+    const countdownInterval = setInterval(() => {
+      secondsLeft--;
+      const timerEl = countdownOverlay.querySelector('.countdown-timer');
+      if (timerEl) {
+        timerEl.textContent = secondsLeft;
+        if (secondsLeft <= 10) {
+          timerEl.style.color = '#ff6b6b';
+          timerEl.style.animation = 'pulse 0.5s ease infinite';
+        }
+      }
+
+      if (secondsLeft <= 0) {
+        clearInterval(countdownInterval);
+        countdownOverlay.remove();
+      }
+    }, 1000);
+
+    // Store interval ID for cleanup
+    countdownOverlay.dataset.intervalId = countdownInterval;
+  }
+
+  function showProofSatisfied(data) {
+    // Show notification when founder satisfies a proof requirement
+    let proofs = data.proofs;
+
+    // Handle various data formats
+    let proofStrings = [];
+    if (Array.isArray(proofs)) {
+      proofStrings = proofs.map(p => {
+        if (Array.isArray(p)) return p[0];
+        if (typeof p === 'object' && p !== null) return p.type || p.name || JSON.stringify(p);
+        return String(p);
+      });
+    } else if (typeof proofs === 'object' && proofs !== null) {
+      // It might be an object like {type: 'revenue', value: 50000}
+      proofStrings = Object.keys(proofs).length > 0 ? [proofs.type || Object.keys(proofs)[0]] : [];
+    } else if (proofs) {
+      proofStrings = [String(proofs)];
+    }
+
+    if (proofStrings.length === 0) return;
+
+    const notification = document.createElement('div');
+    notification.className = 'proof-satisfied-notification';
+    notification.innerHTML = `
+      <div class="proof-content">
+        <span class="proof-icon">✓</span>
+        <span class="proof-text">${data.sharkName} acknowledges your ${proofStrings.join(', ')}</span>
+      </div>
+    `;
+    notification.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 1000;
+      animation: slideIn 0.3s ease;
+      box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+    `;
+    document.body.appendChild(notification);
+
+    // Remove after 4 seconds
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 4000);
+  }
+
+  function showDealRecap(data) {
+    // Show a recap of the deal and competing offers
+    const recap = data.recap || {};
+    const competingOffers = data.competingOffers || [];
+
+    if (competingOffers.length === 0) return;
+
+    // Add deal comparison to the success overlay if it exists
+    const overlay = document.querySelector('.ending-overlay--success');
+    if (overlay) {
+      const comparisonDiv = document.createElement('div');
+      comparisonDiv.className = 'deal-comparison';
+      comparisonDiv.innerHTML = `
+        <h3 style="margin-top: 20px; font-size: 14px; color: #666;">Other offers you passed on:</h3>
+        <div class="other-offers" style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; justify-content: center;">
+          ${competingOffers.map(offer => `
+            <div class="passed-offer" style="background: #f0f0f0; padding: 8px 12px; border-radius: 6px; font-size: 12px;">
+              <strong>${offer.sharkName}</strong>: $${(offer.amount || 0).toLocaleString()} for ${offer.equity}%
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      const endingContent = overlay.querySelector('.ending-content');
+      if (endingContent) {
+        endingContent.insertBefore(comparisonDiv, endingContent.querySelector('.ending-btn'));
+      }
+    }
+  }
+
+  function showSessionComplete(data) {
+    // Update UI to show session is fully complete
+    console.log('Session complete:', data);
+
+    // Stop any remaining countdown
+    const countdown = document.getElementById('finalOfferCountdown');
+    if (countdown) {
+      const intervalId = countdown.dataset.intervalId;
+      if (intervalId) clearInterval(parseInt(intervalId));
+      countdown.remove();
+    }
   }
 
   function playSuccessMusic() {

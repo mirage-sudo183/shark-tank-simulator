@@ -15,10 +15,11 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 from session import SessionManager
-from sharks import SharkManager, SHARK_IDS
+from sharks import SharkManager, SHARK_IDS, InvestorBeliefState, INVESTOR_ARCHETYPES
 from ai_client import AIClient
 from tts_client import TTSClient
 from firebase_admin_init import initialize_firebase, optional_auth, require_auth
+from deal_flow import DealMode, OfferLifecycle, DealResolution
 
 # Verification modules
 from verification.defillama import search_protocols, verify_protocol_ownership
@@ -226,25 +227,199 @@ def start_session():
     # Create session with user info and verification
     session_id = session_manager.create_session(pitch_data, user_id=user_id, twitter_handle=twitter_handle)
 
-    # Initialize shark states with confidence scores
+    # Initialize shark states with confidence scores and belief states
+    session_manager.initialize_shark_states(session_id, pitch_data)
+
     sharks = []
     for shark_id in SHARK_IDS:
         confidence = shark_manager.calculate_initial_confidence(shark_id, pitch_data)
-        shark_state = {
+        # Update session with calculated confidence
+        session_manager.update_shark_state(session_id, shark_id, {'confidence': confidence})
+
+        # Get the initialized state for response
+        state = session_manager.get_shark_state(session_id, shark_id)
+        shark_data = {
             'id': shark_id,
             'name': shark_manager.get_shark_name(shark_id),
-            'status': 'live',
+            'status': state.get('status', 'live'),
             'confidence': confidence,
             'isSpeaking': False,
             'hasOffered': False,
-            'currentOffer': None
+            'currentOffer': None,
+            'archetype': INVESTOR_ARCHETYPES.get(shark_id, {}).get('type', 'unknown')
         }
-        session_manager.update_shark_state(session_id, shark_id, shark_state)
-        sharks.append(shark_state)
+        sharks.append(shark_data)
 
     return jsonify({
         'sessionId': session_id,
         'sharks': sharks
+    })
+
+
+# =============================================================================
+# Quick Test Mode - Skip pitch, start with offer ready
+# =============================================================================
+
+@app.route('/api/test/quick-session', methods=['POST'])
+def quick_test_session():
+    """Create a test session that skips pitch and has a shark ready to offer."""
+    data = request.json or {}
+
+    # Allow selecting which shark makes the offer (default: victor)
+    selected_shark = data.get('sharkId', 'victor')
+    if selected_shark not in SHARK_IDS:
+        selected_shark = 'victor'
+
+    # Pre-defined test pitch data
+    test_pitch_data = {
+        'companyName': 'TestCo AI',
+        'companyDescription': 'An AI-powered testing platform that helps developers ship faster with automated QA.',
+        'amountRaising': 100000,
+        'equityPercent': 5,
+        'proofType': 'revenue',
+        'proofValue': '$50,000 MRR'
+    }
+
+    # Create session
+    session_id = session_manager.create_session(test_pitch_data)
+    session_manager.initialize_shark_states(session_id, test_pitch_data)
+
+    # Set phase directly to QA
+    session_manager.set_phase(session_id, 'qa')
+
+    # Set high confidence for all sharks (so they're ready to offer)
+    sharks = []
+    for shark_id in SHARK_IDS:
+        # High confidence = ready to make offers
+        confidence = 85
+        session_manager.update_shark_state(session_id, shark_id, {'confidence': confidence})
+
+        # Update belief state for proper offer generation
+        belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
+        if belief_state:
+            belief_state.capital_conviction = 'medium'
+            belief_state.perceived_stage = 'revenue'
+            belief_state.implied_valuation_range = (500000, 2000000)
+            session_manager.update_shark_belief_state(session_id, shark_id, belief_state)
+
+        state = session_manager.get_shark_state(session_id, shark_id)
+        shark_data = {
+            'id': shark_id,
+            'name': shark_manager.get_shark_name(shark_id),
+            'status': state.get('status', 'live'),
+            'confidence': confidence,
+            'isSpeaking': False,
+            'hasOffered': False,
+            'currentOffer': None,
+            'archetype': INVESTOR_ARCHETYPES.get(shark_id, {}).get('type', 'unknown')
+        }
+        sharks.append(shark_data)
+
+    # Generate an immediate offer from selected shark
+    threading.Thread(
+        target=generate_test_offer,
+        args=(session_id, selected_shark),
+        daemon=True
+    ).start()
+
+    return jsonify({
+        'sessionId': session_id,
+        'sharks': sharks,
+        'phase': 'qa',
+        'testMode': True,
+        'pitchData': test_pitch_data,
+        'selectedShark': selected_shark
+    })
+
+
+def generate_test_offer(session_id, shark_id):
+    """Generate an immediate offer from a shark for testing."""
+    import time
+    time.sleep(2)  # Small delay so frontend can connect to SSE
+
+    session = session_manager.get_session(session_id)
+    if not session:
+        return
+
+    pitch_data = session.get('pitchData', {})
+    belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
+    confidence = 85
+
+    # Send thinking indicator
+    send_sse_event(session_id, 'shark_thinking', {
+        'sharkId': shark_id,
+        'sharkName': shark_manager.get_shark_name(shark_id)
+    })
+
+    time.sleep(1)
+
+    # Generate a structured offer
+    offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+
+    # Register the offer BEFORE sending SSE
+    if offer:
+        offer_id = session_manager.add_offer(session_id, offer)
+        offer['id'] = offer_id
+        session_manager.record_shark_offer(session_id, shark_id, offer)
+        session_manager.add_offer_to_deal_mode(session_id, offer)
+
+    # Create serializable offer for SSE
+    offer_for_sse = None
+    if offer:
+        offer_for_sse = {
+            'id': offer.get('id'),
+            'sharkId': offer.get('sharkId'),
+            'sharkName': offer.get('sharkName'),
+            'deal_type': offer.get('deal_type'),
+            'amount': offer.get('amount'),
+            'equity': offer.get('equity'),
+            'terms': offer.get('terms'),
+            'conditions': offer.get('conditions'),
+            'implied_valuation': offer.get('implied_valuation'),
+            'rationale': offer.get('rationale'),
+            'royalty': offer.get('royalty'),
+            'royaltyUntil': offer.get('royaltyUntil'),
+        }
+
+    # Send speaking indicator
+    send_sse_event(session_id, 'shark_speaking', {
+        'sharkId': shark_id,
+        'sharkName': shark_manager.get_shark_name(shark_id),
+        'speaking': True
+    })
+
+    # Create offer message
+    offer_text = f"I like what I'm seeing here. Let me make you an offer: ${offer.get('amount', 100000):,} for {offer.get('equity', 5)}% equity."
+    if offer.get('royalty'):
+        offer_text += f" Plus a ${offer.get('royalty')}/unit royalty until I recoup my investment."
+
+    # Synthesize TTS
+    tts_result = tts_client.synthesize_for_shark(shark_id, offer_text)
+
+    # Send the offer message
+    send_sse_event(session_id, 'shark_message', {
+        'sharkId': shark_id,
+        'sharkName': shark_manager.get_shark_name(shark_id),
+        'text': offer_text,
+        'offer': offer_for_sse,
+        'actionType': 'IMMEDIATE_OFFER',
+        'audio': tts_result if tts_result.get('audioData') else None,
+        'duration': tts_result.get('duration', 0)
+    })
+
+    # Done speaking
+    send_sse_event(session_id, 'shark_speaking', {
+        'sharkId': shark_id,
+        'speaking': False
+    })
+
+    # Store in QA transcript
+    session_manager.add_qa_message(session_id, {
+        'speaker': shark_manager.get_shark_name(shark_id),
+        'speakerId': shark_id,
+        'text': offer_text,
+        'isShark': True,
+        'actionType': 'IMMEDIATE_OFFER'
     })
 
 
@@ -326,22 +501,53 @@ def generate_initial_reactions(session_id):
             })
             continue
 
-        # Generate response
+        # Get belief state for this shark
+        belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
+
+        # Generate response with belief state
         response = ai_client.generate_shark_response(
             shark_id=shark_id,
             persona=shark_manager.get_persona(shark_id),
             pitch_data=pitch_data,
             transcript=transcript,
             context=session.get('qaTranscript', []),
-            confidence=confidence
+            confidence=confidence,
+            belief_state=belief_state.to_dict() if belief_state else None
         )
 
         if response:
-            # Check if shark is going out (detect "I'm out" in response)
-            is_going_out = "i'm out" in response.lower() or "im out" in response.lower()
+            # Parse structured response to extract action type and clean content
+            parsed = ai_client.parse_structured_response(response)
+            action_type = parsed['action_type']
+            display_response = parsed['content']  # Clean response without [ACTION] tags
 
-            # Check if response contains an offer (only if not going out)
-            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence) if not is_going_out else None
+            # Update belief state based on response
+            if belief_state:
+                for concern in parsed.get('concerns', []):
+                    belief_state.add_concern(concern)
+                for positive in parsed.get('positives', []):
+                    belief_state.add_positive(positive)
+                for proof in parsed.get('required_proof', []):
+                    belief_state.add_required_proof(proof)
+                belief_state.record_action(action_type)
+                session_manager.update_shark_belief_state(session_id, shark_id, belief_state)
+
+            # Check if shark is going out
+            is_going_out = parsed['is_rejection']
+
+            # Generate offer based on action type and belief state
+            offer = None
+            if not is_going_out and parsed['is_offer']:
+                if belief_state:
+                    offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+                else:
+                    offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
+
+            # IMPORTANT: Register the offer BEFORE sending SSE event so IDs match
+            if offer:
+                offer_id = session_manager.add_offer(session_id, offer)
+                offer['id'] = offer_id
+                session_manager.record_shark_offer(session_id, shark_id, offer)
 
             # Send speaking indicator
             send_sse_event(session_id, 'shark_speaking', {
@@ -350,15 +556,34 @@ def generate_initial_reactions(session_id):
                 'speaking': True
             })
 
-            # Synthesize TTS audio
-            tts_result = tts_client.synthesize_for_shark(shark_id, response)
+            # Synthesize TTS audio with clean response
+            tts_result = tts_client.synthesize_for_shark(shark_id, display_response)
 
-            # Send message with audio
+            # Create a serializable copy of the offer for SSE (remove belief_state_snapshot to avoid circular refs)
+            offer_for_sse = None
+            if offer:
+                offer_for_sse = {
+                    'id': offer.get('id'),
+                    'sharkId': offer.get('sharkId'),
+                    'sharkName': offer.get('sharkName'),
+                    'deal_type': offer.get('deal_type'),
+                    'amount': offer.get('amount'),
+                    'equity': offer.get('equity'),
+                    'terms': offer.get('terms'),
+                    'conditions': offer.get('conditions'),
+                    'implied_valuation': offer.get('implied_valuation'),
+                    'rationale': offer.get('rationale'),
+                    'royalty': offer.get('royalty'),
+                    'royaltyUntil': offer.get('royaltyUntil'),
+                }
+
+            # Send message with audio - use clean display_response
             send_sse_event(session_id, 'shark_message', {
                 'sharkId': shark_id,
                 'sharkName': shark_manager.get_shark_name(shark_id),
-                'text': response,
-                'offer': offer,
+                'text': display_response,
+                'offer': offer_for_sse,
+                'actionType': action_type,
                 'audio': tts_result if tts_result.get('audioData') else None,
                 'duration': tts_result.get('duration', 0)
             })
@@ -369,19 +594,16 @@ def generate_initial_reactions(session_id):
                 send_sse_event(session_id, 'shark_out', {
                     'sharkId': shark_id,
                     'sharkName': shark_manager.get_shark_name(shark_id),
-                    'message': response
+                    'message': display_response
                 })
 
-            # If there's an offer, add it to session (offer already sent in shark_message)
-            if offer:
-                session_manager.add_offer(session_id, offer)
-
-            # Store in QA transcript
+            # Store in QA transcript with clean text
             session_manager.add_qa_message(session_id, {
                 'speaker': shark_manager.get_shark_name(shark_id),
                 'speakerId': shark_id,
-                'text': response,
-                'isShark': True
+                'text': display_response,
+                'isShark': True,
+                'actionType': action_type
             })
 
             # Done speaking
@@ -449,18 +671,34 @@ def user_message(session_id):
         'isShark': False
     })
 
+    # Process founder message for proofs across all sharks
+    # This updates belief states when founder provides evidence
+    proofs_satisfied = session_manager.process_founder_message(session_id, text)
+
+    # Send proof events if any proofs were satisfied
+    for shark_id, proof_result in proofs_satisfied.items():
+        # proof_result is a dict with 'proofs_found' and 'improvements' keys
+        if proof_result and isinstance(proof_result, dict):
+            improvements = proof_result.get('improvements', [])
+            if improvements:
+                send_sse_event(session_id, 'proof_satisfied', {
+                    'sharkId': shark_id,
+                    'sharkName': shark_manager.get_shark_name(shark_id),
+                    'proofs': improvements  # List of {type, value, reason} dicts
+                })
+
     # Generate shark responses in background
     threading.Thread(
         target=generate_shark_responses_to_user,
-        args=(session_id, text),
+        args=(session_id, text, proofs_satisfied),
         daemon=True
     ).start()
 
-    return jsonify({'received': True})
+    return jsonify({'received': True, 'proofsSatisfied': proofs_satisfied})
 
 
-def generate_shark_responses_to_user(session_id, user_message):
-    """Generate ONE shark response to user message - conversational flow."""
+def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=None):
+    """Generate ONE shark response to user message - conversational flow with belief tracking."""
     session = session_manager.get_session(session_id)
     if not session:
         return
@@ -468,6 +706,10 @@ def generate_shark_responses_to_user(session_id, user_message):
     pitch_data = session.get('pitchData', {})
     transcript = session.get('transcript', [])
     context = session.get('qaTranscript', [])
+    proofs_satisfied = proofs_satisfied or {}
+
+    # Get current deal mode status
+    deal_mode_status = session_manager.get_deal_mode_status(session_id)
 
     # Pick ONE shark to respond - rotate through sharks who haven't spoken recently
     responding_sharks = []
@@ -492,8 +734,26 @@ def generate_shark_responses_to_user(session_id, user_message):
     if not candidates:
         candidates = responding_sharks
 
-    # Pick one shark (weighted by confidence)
-    shark_id, confidence = random.choice(candidates)
+    # If a shark had proofs satisfied by this message, prioritize them
+    # This ensures the shark who was asking for proof gets to respond to the answer
+    shark_with_satisfied_proof = None
+    for shark_id, proofs in proofs_satisfied.items():
+        if proofs and any(s[0] == shark_id for s in candidates):
+            shark_with_satisfied_proof = shark_id
+            break
+
+    if shark_with_satisfied_proof:
+        shark_id = shark_with_satisfied_proof
+        confidence = next(c for s, c in candidates if s == shark_id)
+    else:
+        # Pick one shark (weighted by confidence)
+        shark_id, confidence = random.choice(candidates)
+
+    # Get belief state for this shark
+    belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
+
+    # Get competing offers for context
+    competing_offers = session_manager.get_competing_offers(session_id, shark_id)
 
     # Only one shark responds
     for shark_id, confidence in [(shark_id, confidence)]:
@@ -503,23 +763,106 @@ def generate_shark_responses_to_user(session_id, user_message):
             'sharkName': shark_manager.get_shark_name(shark_id)
         })
 
-        # Generate response
-        response = ai_client.generate_shark_response(
-            shark_id=shark_id,
-            persona=shark_manager.get_persona(shark_id),
-            pitch_data=pitch_data,
-            transcript=transcript,
-            context=context,
-            confidence=confidence,
-            user_message=user_message
-        )
+        # Build enhanced context for AI
+        enhanced_context = {
+            'deal_mode': deal_mode_status.get('mode', 'exploration') if deal_mode_status else 'exploration',
+            'competing_offers': competing_offers,
+            'proofs_just_satisfied': proofs_satisfied.get(shark_id, []),
+            'is_bidding_war': deal_mode_status.get('is_bidding_war', False) if deal_mode_status else False
+        }
+
+        # Determine if shark should make an offer based on confidence and belief state
+        should_offer = False
+        offer = None
+
+        if confidence >= 65 and belief_state:
+            # High confidence - might make an offer
+            can_offer = belief_state.proof_tracker.can_make_unconditional_offer() if hasattr(belief_state, 'proof_tracker') else True
+            if can_offer or confidence >= 80:
+                should_offer = True
+                # Generate offer terms FIRST
+                offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+
+        if should_offer and offer:
+            # Generate dialogue with the EXACT offer terms
+            response = ai_client.generate_offer_dialogue(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                offer_terms=offer,
+                pitch_data=pitch_data,
+                context=context
+            )
+        else:
+            # Generate regular response (question, comment, etc.)
+            response = ai_client.generate_shark_response(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                pitch_data=pitch_data,
+                transcript=transcript,
+                context=context,
+                confidence=confidence,
+                user_message=user_message,
+                belief_state=belief_state.to_dict() if belief_state else None,
+                deal_context=enhanced_context
+            )
 
         if response:
-            # Check if shark is going out (detect "I'm out" in response)
-            is_going_out = "i'm out" in response.lower() or "im out" in response.lower()
+            # Parse structured response to extract action type and update belief state
+            parsed = ai_client.parse_structured_response(response)
+            action_type = parsed['action_type']
+            display_response = parsed['content']  # Clean response without tags
 
-            # Check for offer
-            offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence) if not is_going_out else None
+            # Update belief state based on response
+            if belief_state:
+                for concern in parsed.get('concerns', []):
+                    belief_state.add_concern(concern)
+                for positive in parsed.get('positives', []):
+                    belief_state.add_positive(positive)
+                for proof in parsed.get('required_proof', []):
+                    belief_state.add_required_proof(proof)
+                belief_state.record_action(action_type)
+
+                # Update conviction based on action type
+                if action_type in ['IMMEDIATE_OFFER', 'CONDITIONAL_OFFER']:
+                    belief_state.update_conviction('high')
+                elif action_type == 'EXPRESS' and parsed.get('positives'):
+                    belief_state.update_conviction('medium')
+
+                # Save updated belief state
+                session_manager.update_shark_belief_state(session_id, shark_id, belief_state)
+
+            # Record action type
+            session_manager.record_shark_action(session_id, shark_id, action_type)
+
+            # Check if shark is going out
+            is_going_out = parsed['is_rejection']
+
+            # If we didn't pre-generate an offer but the AI decided to make one anyway
+            if not offer and not is_going_out and parsed['is_offer']:
+                if belief_state:
+                    offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+                else:
+                    offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
+
+            # IMPORTANT: Register the offer BEFORE sending SSE event so IDs match
+            # If there's an offer, add it to session first so the ID is set correctly
+            mode_result = None
+            if offer:
+                # Add to session - this sets the offer ID
+                offer_id = session_manager.add_offer(session_id, offer)
+                offer['id'] = offer_id
+                session_manager.record_shark_offer(session_id, shark_id, offer)
+
+                # Add to deal mode and handle mode transitions
+                mode_result = session_manager.add_offer_to_deal_mode(session_id, offer)
+
+                # Notify other sharks of the competing offer
+                session_manager.notify_sharks_of_competing_offer(session_id, offer)
+
+                # Record in belief state
+                if belief_state:
+                    belief_state.record_offer_made(offer)
+                    session_manager.update_shark_belief_state(session_id, shark_id, belief_state)
 
             # Speaking
             send_sse_event(session_id, 'shark_speaking', {
@@ -529,14 +872,33 @@ def generate_shark_responses_to_user(session_id, user_message):
             })
 
             # Synthesize TTS audio
-            tts_result = tts_client.synthesize_for_shark(shark_id, response)
+            tts_result = tts_client.synthesize_for_shark(shark_id, display_response)
 
-            # Message with audio
+            # Create a serializable copy of the offer for SSE (remove belief_state_snapshot to avoid circular refs)
+            offer_for_sse = None
+            if offer:
+                offer_for_sse = {
+                    'id': offer.get('id'),
+                    'sharkId': offer.get('sharkId'),
+                    'sharkName': offer.get('sharkName'),
+                    'deal_type': offer.get('deal_type'),
+                    'amount': offer.get('amount'),
+                    'equity': offer.get('equity'),
+                    'terms': offer.get('terms'),
+                    'conditions': offer.get('conditions'),
+                    'implied_valuation': offer.get('implied_valuation'),
+                    'rationale': offer.get('rationale'),
+                    'royalty': offer.get('royalty'),
+                    'royaltyUntil': offer.get('royaltyUntil'),
+                }
+
+            # Message with audio and structured info
             send_sse_event(session_id, 'shark_message', {
                 'sharkId': shark_id,
                 'sharkName': shark_manager.get_shark_name(shark_id),
-                'text': response,
-                'offer': offer,
+                'text': display_response,
+                'offer': offer_for_sse,
+                'actionType': action_type,
                 'audio': tts_result if tts_result.get('audioData') else None,
                 'duration': tts_result.get('duration', 0)
             })
@@ -547,19 +909,31 @@ def generate_shark_responses_to_user(session_id, user_message):
                 send_sse_event(session_id, 'shark_out', {
                     'sharkId': shark_id,
                     'sharkName': shark_manager.get_shark_name(shark_id),
-                    'message': response
+                    'message': display_response
                 })
 
-            # If there's an offer, add it to session (offer already sent in shark_message)
-            if offer:
-                session_manager.add_offer(session_id, offer)
+            # If we entered bidding war, send event
+            if mode_result and mode_result.get('mode') == 'bidding_war':
+                send_sse_event(session_id, 'bidding_war_started', {
+                    'activeOffers': mode_result.get('active_offers', []),
+                    'message': 'Multiple sharks are now competing for this deal!'
+                })
 
-            # Store
+            # Store dialogue in session and shark history
             session_manager.add_qa_message(session_id, {
                 'speaker': shark_manager.get_shark_name(shark_id),
                 'speakerId': shark_id,
-                'text': response,
-                'isShark': True
+                'text': display_response,
+                'isShark': True,
+                'actionType': action_type
+            })
+
+            # Add to shark's dialogue history
+            session_manager.add_shark_dialogue(session_id, shark_id, {
+                'type': action_type,
+                'content': display_response,
+                'concerns': parsed.get('concerns', []),
+                'positives': parsed.get('positives', [])
             })
 
             # Done speaking
@@ -585,20 +959,35 @@ def offer_response(session_id):
     counter_terms = data.get('counterTerms')
 
     if action == 'accept':
-        # Deal closed!
+        # Deal closed - use deal resolution for full post-deal flow
         offer = session_manager.get_offer(session_id, offer_id)
+        if not offer:
+            return jsonify({'error': 'Offer not found - it may have expired'}), 404
         if offer:
-            session_manager.set_phase(session_id, 'closed')
-            session_manager.set_final_deal(session_id, offer)
+            # Resolve the deal and get all post-deal events
+            resolution_events = session_manager.resolve_deal(session_id, offer)
 
             shark_id = offer.get('sharkId')
+
+            # Send deal closed event
             send_sse_event(session_id, 'deal_closed', {
                 'sharkId': shark_id,
                 'sharkName': shark_manager.get_shark_name(shark_id),
                 'offer': offer
             })
 
-            return jsonify({'result': 'deal_closed', 'offer': offer})
+            # Send post-deal events (shark reactions, recap, etc.)
+            threading.Thread(
+                target=send_post_deal_events,
+                args=(session_id, resolution_events),
+                daemon=True
+            ).start()
+
+            return jsonify({
+                'result': 'deal_closed',
+                'offer': offer,
+                'resolutionEvents': resolution_events
+            })
 
     elif action == 'decline':
         offer = session_manager.get_offer(session_id, offer_id)
@@ -715,16 +1104,17 @@ def handle_offer_decline(session_id, shark_id, original_offer):
 
 
 def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
-    """Handle when user makes a counter offer."""
+    """Handle when user makes a counter offer with strategic response based on belief state."""
     session = session_manager.get_session(session_id)
     if not session:
         return
 
     pitch_data = session.get('pitchData', {})
 
-    # Get shark's current confidence for offer generation
+    # Get shark's current confidence and belief state
     state = session_manager.get_shark_state(session_id, shark_id)
     confidence = state.get('confidence', 70)
+    belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
 
     # Thinking
     send_sse_event(session_id, 'shark_thinking', {
@@ -732,13 +1122,14 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
         'sharkName': shark_manager.get_shark_name(shark_id)
     })
 
-    # Generate response to counter
-    response, accepts = ai_client.generate_counter_response(
+    # Generate strategic response to counter with belief state
+    response, response_type, new_terms = ai_client.generate_strategic_counter_response(
         shark_id=shark_id,
         persona=shark_manager.get_persona(shark_id),
         original_offer=original_offer,
         counter_terms=counter_terms,
-        pitch_data=pitch_data
+        pitch_data=pitch_data,
+        belief_state=belief_state.to_dict() if belief_state else None
     )
 
     send_sse_event(session_id, 'shark_speaking', {
@@ -750,7 +1141,7 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
     # Synthesize TTS for response
     tts_result = tts_client.synthesize_for_shark(shark_id, response)
 
-    if accepts:
+    if response_type == 'ACCEPT':
         # Shark accepts counter!
         final_offer = {
             **original_offer,
@@ -764,6 +1155,7 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
             'sharkId': shark_id,
             'sharkName': shark_manager.get_shark_name(shark_id),
             'text': response,
+            'counterAction': response_type,
             'audio': tts_result if tts_result.get('audioData') else None,
             'duration': tts_result.get('duration', 0)
         })
@@ -773,28 +1165,203 @@ def handle_counter_offer(session_id, shark_id, original_offer, counter_terms):
             'sharkName': shark_manager.get_shark_name(shark_id),
             'offer': final_offer
         })
-    else:
-        # Shark rejects counter or makes new offer
-        # Parse offer first so we can include it in shark_message
-        new_offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
+
+    elif response_type == 'REJECT':
+        # Shark goes out
+        session_manager.update_shark_state(session_id, shark_id, {'status': 'out'})
 
         send_sse_event(session_id, 'shark_message', {
             'sharkId': shark_id,
             'sharkName': shark_manager.get_shark_name(shark_id),
             'text': response,
-            'offer': new_offer,  # Include offer in message (may be None)
+            'counterAction': response_type,
             'audio': tts_result if tts_result.get('audioData') else None,
             'duration': tts_result.get('duration', 0)
         })
 
-        # Add offer to session if present
-        if new_offer:
-            session_manager.add_offer(session_id, new_offer)
+        send_sse_event(session_id, 'shark_out', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'message': response
+        })
+
+    elif response_type == 'MEET_HALFWAY':
+        # Shark proposes new terms
+        new_offer = None
+        if new_terms:
+            # Determine deal type - Victor prefers royalty, others use original or default
+            deal_type = original_offer.get('deal_type', 'cash_equity')
+            if shark_id == 'victor' and deal_type == 'cash_equity':
+                deal_type = 'royalty'  # Victor always prefers royalty deals
+
+            # Create offer with the extracted new terms
+            new_offer = {
+                'sharkId': shark_id,
+                'sharkName': shark_manager.get_shark_name(shark_id),
+                'deal_type': deal_type,
+                'amount': new_terms.get('amount', original_offer.get('amount')),
+                'equity': new_terms.get('equity', original_offer.get('equity')),
+                'terms': new_terms,
+                'conditions': original_offer.get('conditions', []),
+                'rationale': 'Counter-counter offer - meeting halfway'
+            }
+            # Note: add_offer will assign the ID, don't set it here
+            offer_id = session_manager.add_offer(session_id, new_offer)
+            if offer_id:
+                session_manager.record_shark_offer(session_id, shark_id, new_offer)
+            else:
+                print(f"[ERROR] Failed to add offer for {shark_id} - session may not exist")
+
+        send_sse_event(session_id, 'shark_message', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'text': response,
+            'offer': new_offer,
+            'counterAction': response_type,
+            'audio': tts_result if tts_result.get('audioData') else None,
+            'duration': tts_result.get('duration', 0)
+        })
+
+    elif response_type == 'ADJUST_STRUCTURE':
+        # Shark suggests different deal structure
+        new_offer = None
+        if belief_state:
+            new_offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+            if new_offer:
+                offer_id = session_manager.add_offer(session_id, new_offer)
+                if offer_id:
+                    session_manager.record_shark_offer(session_id, shark_id, new_offer)
+                    print(f"[DEBUG] Created {new_offer.get('deal_type')} offer for {shark_id}: ID={offer_id}")
+                else:
+                    print(f"[ERROR] Failed to add ADJUST_STRUCTURE offer for {shark_id}")
+                    new_offer = None  # Don't send broken offer to frontend
+
+        send_sse_event(session_id, 'shark_message', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'text': response,
+            'offer': new_offer,
+            'counterAction': response_type,
+            'audio': tts_result if tts_result.get('audioData') else None,
+            'duration': tts_result.get('duration', 0)
+        })
+
+    else:  # RESTATE_CONDITIONS or unknown
+        # Shark restates what they need before investing
+        send_sse_event(session_id, 'shark_message', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'text': response,
+            'counterAction': response_type,
+            'audio': tts_result if tts_result.get('audioData') else None,
+            'duration': tts_result.get('duration', 0)
+        })
+
+    # Store in QA transcript
+    session_manager.add_qa_message(session_id, {
+        'speaker': shark_manager.get_shark_name(shark_id),
+        'speakerId': shark_id,
+        'text': response,
+        'isShark': True,
+        'counterAction': response_type
+    })
 
     send_sse_event(session_id, 'shark_speaking', {
         'sharkId': shark_id,
         'speaking': False
     })
+
+
+def send_post_deal_events(session_id, resolution_events):
+    """Send post-deal events (shark reactions, recap) via SSE with TTS."""
+    import time
+
+    for event in resolution_events:
+        event_type = event.get('type')
+
+        if event_type == 'shark_reaction':
+            shark_id = event.get('sharkId')
+            text = event.get('text', '')
+
+            # Synthesize TTS for reaction
+            tts_result = tts_client.synthesize_for_shark(shark_id, text)
+
+            send_sse_event(session_id, 'shark_message', {
+                'sharkId': shark_id,
+                'sharkName': event.get('sharkName'),
+                'text': text,
+                'postDeal': True,
+                'reactionType': event.get('reaction_type'),
+                'audio': tts_result if tts_result.get('audioData') else None,
+                'duration': tts_result.get('duration', 0)
+            })
+
+            # Small delay between reactions
+            time.sleep(1.5)
+
+        elif event_type == 'deal_recap':
+            send_sse_event(session_id, 'deal_recap', {
+                'recap': event.get('recap', {}),
+                'acceptedOffer': event.get('accepted_offer'),
+                'competingOffers': event.get('competing_offers', [])
+            })
+
+        elif event_type == 'session_complete':
+            send_sse_event(session_id, 'session_complete', {
+                'finalDeal': event.get('final_deal'),
+                'totalOffers': event.get('total_offers'),
+                'sharksOut': event.get('sharks_out')
+            })
+
+
+# =============================================================================
+# Deal Mode Status Endpoint
+# =============================================================================
+
+@app.route('/api/session/<session_id>/deal-status', methods=['GET'])
+def get_deal_status(session_id):
+    """Get current deal mode status including active offers and mode."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    deal_status = session_manager.get_deal_mode_status(session_id)
+    if not deal_status:
+        deal_status = {'mode': 'exploration', 'active_offers_count': 0}
+
+    return jsonify(deal_status)
+
+
+@app.route('/api/session/<session_id>/final-offer', methods=['POST'])
+def initiate_final_offer_endpoint(session_id):
+    """Shark initiates a final offer with countdown timer."""
+    session = session_manager.get_session(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    data = request.json
+    offer_id = data.get('offerId')
+
+    if not offer_id:
+        return jsonify({'error': 'offerId required'}), 400
+
+    result = session_manager.initiate_final_offer(session_id, offer_id)
+
+    if result.get('error'):
+        return jsonify(result), 400
+
+    # Send SSE event for final offer countdown
+    offer = session_manager.get_offer(session_id, offer_id)
+    if offer:
+        send_sse_event(session_id, 'final_offer_countdown', {
+            'offerId': offer_id,
+            'sharkId': offer.get('sharkId'),
+            'sharkName': offer.get('sharkName'),
+            'expiresAt': result.get('expires_at'),
+            'countdownSeconds': result.get('countdown_seconds', 30)
+        })
+
+    return jsonify(result)
 
 
 # =============================================================================
