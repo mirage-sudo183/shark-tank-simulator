@@ -5,6 +5,10 @@ Based on real Shark Tank investors
 
 import random
 import re
+import time
+
+# Import deal flow components
+from deal_flow import ProofTracker, OfferProgression
 
 # Shark IDs and mappings
 SHARK_IDS = ['marcus', 'victor', 'elena', 'richard', 'daniel']
@@ -24,6 +28,93 @@ SHARK_REAL_COUNTERPARTS = {
     'richard': 'Richard Branson',
     'daniel': 'Robert Herjavec'
 }
+
+# =============================================================================
+# Deal Types - All supported investment structures
+# =============================================================================
+
+DEAL_TYPES = {
+    'cash_equity': {
+        'name': 'Cash for Equity',
+        'requires': ['amount', 'equity'],
+        'description': 'Immediate investment for ownership stake'
+    },
+    'safe_cap': {
+        'name': 'SAFE with Valuation Cap',
+        'requires': ['amount', 'valuation_cap'],
+        'description': 'Simple Agreement for Future Equity'
+    },
+    'safe_milestone': {
+        'name': 'SAFE with Milestone Trigger',
+        'requires': ['amount', 'milestone', 'valuation_cap'],
+        'description': 'SAFE that converts when milestone achieved'
+    },
+    'tranche': {
+        'name': 'Tranche-Based Investment',
+        'requires': ['total_amount', 'tranches'],
+        'description': 'Investment released in stages based on milestones'
+    },
+    'royalty': {
+        'name': 'Revenue Share / Royalty',
+        'requires': ['amount', 'royalty_percent', 'royalty_cap'],
+        'description': 'Cash for percentage of revenue until cap'
+    },
+    'no_offer': {
+        'name': 'No Offer / Deferred',
+        'requires': ['conditions_to_return'],
+        'description': 'Come back when specific conditions are met'
+    }
+}
+
+# =============================================================================
+# Investor Archetypes - Constraints and behavior patterns per shark
+# =============================================================================
+
+INVESTOR_ARCHETYPES = {
+    'marcus': {
+        'type': 'tech_scaler',
+        'allowed_deals': ['cash_equity', 'safe_cap', 'tranche'],
+        'disallowed_deals': ['royalty'],
+        'requires_for_equity': None,  # Will invest early stage
+        'valuation_tolerance': 'high',  # Accepts higher valuations for tech
+        'min_stage_for_cash_equity': 'idea',  # Can invest at any stage
+    },
+    'victor': {
+        'type': 'revenue_first',
+        'allowed_deals': ['royalty', 'cash_equity', 'tranche'],
+        'disallowed_deals': ['safe_cap', 'safe_milestone'],
+        'requires_for_equity': 'revenue',  # Must have revenue for equity
+        'valuation_tolerance': 'low',  # Very conservative on valuation
+        'min_stage_for_cash_equity': 'revenue',  # Only cash_equity if revenue
+    },
+    'elena': {
+        'type': 'proof_driven',
+        'allowed_deals': ['safe_milestone', 'tranche', 'cash_equity'],
+        'disallowed_deals': [],
+        'requires_for_equity': 'traction',  # Needs users/customers/revenue
+        'valuation_tolerance': 'medium',
+        'min_stage_for_cash_equity': 'traction',  # Needs some proof
+    },
+    'richard': {
+        'type': 'brand_builder',
+        'allowed_deals': ['cash_equity', 'safe_cap'],
+        'disallowed_deals': ['royalty', 'tranche'],
+        'requires_for_equity': None,  # Invests on vision
+        'valuation_tolerance': 'high',
+        'min_stage_for_cash_equity': 'idea',  # Bets on people/brand
+    },
+    'daniel': {
+        'type': 'milestone_mentor',
+        'allowed_deals': ['safe_milestone', 'tranche', 'cash_equity'],
+        'disallowed_deals': [],
+        'requires_for_equity': None,  # Invests in people
+        'valuation_tolerance': 'medium',
+        'min_stage_for_cash_equity': 'mvp',  # Prefers some product
+    }
+}
+
+# Stage hierarchy for comparison
+STAGE_HIERARCHY = ['idea', 'mvp', 'traction', 'revenue', 'growth']
 
 # =============================================================================
 # Shark Persona Prompts
@@ -263,6 +354,429 @@ OUT_REASONS = {
         "I'm going to let my partners fight for this one. I'm out."
     ]
 }
+
+
+# =============================================================================
+# Investor Belief State - Tracks what each shark believes about the pitch
+# =============================================================================
+
+class InvestorBeliefState:
+    """
+    Tracks an investor's beliefs about a pitch to ensure consistency.
+    Updated after pitch analysis and each dialogue turn.
+    Integrates with ProofTracker and OfferProgression for validation.
+    """
+
+    def __init__(self, shark_id, pitch_data=None):
+        self.shark_id = shark_id
+        # Perceived stage: 'idea', 'mvp', 'traction', 'revenue', 'growth'
+        self.perceived_stage = 'idea'
+        # Key risks identified by this investor
+        self.key_risks = []
+        # What proof they need before investing (legacy - use proof_tracker)
+        self.required_proof = []
+        # How likely they are to invest: 'low', 'medium', 'high'
+        self.capital_conviction = 'low'
+        # Concerns they've explicitly stated
+        self.stated_concerns = []
+        # Positives they've explicitly stated
+        self.stated_positives = []
+        # Implied valuation range based on statements (min, max)
+        self.implied_valuation_range = (0, 0)
+        # Track what questions they've asked
+        self.questions_asked = []
+        # Track action types for consistency
+        self.action_history = []
+
+        # NEW: Integrated proof tracking
+        self.proof_tracker = ProofTracker()
+        # NEW: Offer progression tracking
+        self.offer_progression = None  # Initialized with pitch_data
+        # NEW: Negotiation willingness (decreases with rejections)
+        self.negotiation_willingness = 1.0
+        # NEW: Track competing offers seen
+        self.competing_offers_seen = []
+        # NEW: Last offer made by this shark
+        self.last_offer = None
+        # NEW: Initial ask valuation for reference
+        self.initial_ask_valuation = 0
+
+        if pitch_data:
+            self._initialize_from_pitch(pitch_data)
+
+    def _initialize_from_pitch(self, pitch_data):
+        """Set initial belief state based on pitch data."""
+        proof_type = pitch_data.get('proofType', 'idea')
+        proof_value = pitch_data.get('proofValue', '')
+
+        # Map proof type to perceived stage
+        stage_map = {
+            'idea': 'idea',
+            'prototype': 'mvp',
+            'users': 'traction',
+            'customers': 'traction',
+            'revenue': 'revenue'
+        }
+        self.perceived_stage = stage_map.get(proof_type, 'idea')
+
+        # Calculate implied valuation from ask
+        amount = pitch_data.get('amountRaising', 100000)
+        equity = pitch_data.get('equityPercent', 10)
+        if equity > 0:
+            implied_val = amount / (equity / 100)
+        else:
+            implied_val = amount * 10
+
+        self.initial_ask_valuation = implied_val
+
+        # Set valuation range based on archetype tolerance
+        archetype = INVESTOR_ARCHETYPES.get(self.shark_id, {})
+        tolerance = archetype.get('valuation_tolerance', 'medium')
+
+        if tolerance == 'low':
+            self.implied_valuation_range = (implied_val * 0.3, implied_val * 0.8)
+        elif tolerance == 'high':
+            self.implied_valuation_range = (implied_val * 0.7, implied_val * 1.5)
+        else:  # medium
+            self.implied_valuation_range = (implied_val * 0.5, implied_val * 1.2)
+
+        # Initialize offer progression with valuation bounds
+        self.offer_progression = OfferProgression(self.shark_id, implied_val)
+        self.offer_progression.set_valuation_bounds(
+            floor_multiplier=0.3 if tolerance == 'low' else (0.5 if tolerance == 'medium' else 0.7),
+            ceiling_multiplier=0.8 if tolerance == 'low' else (1.2 if tolerance == 'medium' else 1.5)
+        )
+
+        # Initialize conviction based on stage and archetype requirements
+        archetype = INVESTOR_ARCHETYPES.get(self.shark_id, {})
+        required = archetype.get('requires_for_equity')
+        min_stage = archetype.get('min_stage_for_cash_equity', 'idea')
+
+        current_stage_idx = STAGE_HIERARCHY.index(self.perceived_stage) if self.perceived_stage in STAGE_HIERARCHY else 0
+        min_stage_idx = STAGE_HIERARCHY.index(min_stage) if min_stage in STAGE_HIERARCHY else 0
+
+        if current_stage_idx >= min_stage_idx:
+            self.capital_conviction = 'medium' if self.perceived_stage in ['traction', 'revenue', 'growth'] else 'low'
+        else:
+            self.capital_conviction = 'low'
+            if required:
+                self.required_proof.append(f"Need to see {required}")
+                # Also add to proof tracker
+                self.proof_tracker.require_proof(required, reason=f"Required for equity deal")
+
+        # If proof was provided in pitch, satisfy it
+        if proof_value and proof_type != 'idea':
+            self._process_initial_proof(proof_type, proof_value)
+
+    def add_concern(self, concern):
+        """Record a stated concern."""
+        if concern and concern not in self.stated_concerns:
+            self.stated_concerns.append(concern)
+
+    def add_positive(self, positive):
+        """Record a stated positive."""
+        if positive and positive not in self.stated_positives:
+            self.stated_positives.append(positive)
+
+    def add_required_proof(self, proof):
+        """Record something they need to see."""
+        if proof and proof not in self.required_proof:
+            self.required_proof.append(proof)
+
+    def add_risk(self, risk):
+        """Record an identified risk."""
+        if risk and risk not in self.key_risks:
+            self.key_risks.append(risk)
+
+    def record_action(self, action_type):
+        """Record an action for history tracking."""
+        self.action_history.append(action_type)
+
+    def update_conviction(self, new_level):
+        """Update capital conviction level."""
+        if new_level in ['low', 'medium', 'high']:
+            self.capital_conviction = new_level
+
+    def upgrade_stage(self, new_stage):
+        """Upgrade perceived stage if new info suggests higher."""
+        if new_stage in STAGE_HIERARCHY:
+            current_idx = STAGE_HIERARCHY.index(self.perceived_stage)
+            new_idx = STAGE_HIERARCHY.index(new_stage)
+            if new_idx > current_idx:
+                self.perceived_stage = new_stage
+
+    def can_make_unconditional_offer(self):
+        """Check if this investor can make an unconditional cash offer."""
+        # Check proof tracker first (preferred method)
+        if not self.proof_tracker.can_make_unconditional_offer():
+            return False
+        # Legacy check - cannot if they've stated required proof
+        if self.required_proof:
+            return False
+        # Cannot if conviction is still low
+        if self.capital_conviction == 'low':
+            return False
+        return True
+
+    def _process_initial_proof(self, proof_type, proof_value):
+        """Process proof provided in the initial pitch."""
+        proof_map = {
+            'revenue': 'revenue',
+            'users': 'users',
+            'customers': 'users',
+            'prototype': 'product'
+        }
+        mapped_type = proof_map.get(proof_type)
+        if mapped_type:
+            try:
+                value = float(proof_value) if proof_value else 0
+            except (ValueError, TypeError):
+                value = True
+            self.proof_tracker.satisfy_proof(mapped_type, value)
+
+    def process_founder_message(self, message):
+        """
+        Process founder message for proofs and update state accordingly.
+        Returns list of proofs found and whether any improved the state.
+        """
+        proofs_found = self.proof_tracker.check_message_for_proofs(message)
+
+        valuation_multiplier = 1.0
+        improvements = []
+
+        for proof_type, value in proofs_found:
+            satisfied, reason = self.proof_tracker.satisfy_proof(proof_type, value)
+            if satisfied:
+                improvements.append({
+                    'type': proof_type,
+                    'value': value,
+                    'reason': reason
+                })
+                # Boost valuation range for satisfied proofs
+                valuation_multiplier *= 1.10  # 10% boost per proof
+
+                # Clear related concerns
+                self._clear_related_concerns(proof_type)
+
+                # Upgrade stage if appropriate
+                stage_map = {
+                    'revenue': 'revenue',
+                    'users': 'traction',
+                    'product': 'mvp',
+                    'traction': 'traction'
+                }
+                if proof_type in stage_map:
+                    self.upgrade_stage(stage_map[proof_type])
+
+        # Update valuation range if improvements found
+        if valuation_multiplier > 1.0:
+            min_val, max_val = self.implied_valuation_range
+            self.implied_valuation_range = (
+                min_val * valuation_multiplier,
+                max_val * valuation_multiplier
+            )
+
+            # Also update conviction if proofs were satisfied
+            if self.capital_conviction == 'low':
+                self.capital_conviction = 'medium'
+            elif self.capital_conviction == 'medium' and len(improvements) > 1:
+                self.capital_conviction = 'high'
+
+        return {
+            'proofs_found': proofs_found,
+            'improvements': improvements,
+            'valuation_boost': valuation_multiplier
+        }
+
+    def _clear_related_concerns(self, proof_type):
+        """Remove concerns that are addressed by the proof."""
+        concern_map = {
+            'revenue': ['no revenue', 'pre-revenue', 'sales', 'money', 'profitable'],
+            'users': ['no users', 'traction', 'customers', 'adoption'],
+            'patents': ['no protection', 'ip', 'defensibility', 'competitor'],
+            'team': ['experience', 'background', 'capability'],
+            'product': ['prototype', 'mvp', 'working', 'built']
+        }
+
+        keywords = concern_map.get(proof_type, [])
+        original_count = len(self.stated_concerns)
+        self.stated_concerns = [
+            c for c in self.stated_concerns
+            if not any(kw in c.lower() for kw in keywords)
+        ]
+
+        # Also clear from required_proof
+        self.required_proof = [
+            p for p in self.required_proof
+            if not any(kw in p.lower() for kw in keywords)
+        ]
+
+        return original_count - len(self.stated_concerns)
+
+    def calculate_offer_terms(self, pitch_data, confidence):
+        """
+        Calculate offer terms respecting belief state, offer history, and valuation bounds.
+        Returns dict with amount, equity, implied_valuation.
+        """
+        ask_amount = pitch_data.get('amountRaising', 100000)
+
+        # Get constraints from offer progression
+        if self.offer_progression:
+            constraints = self.offer_progression.get_next_offer_constraints()
+        else:
+            constraints = {
+                'min_valuation': self.implied_valuation_range[0],
+                'max_valuation': self.implied_valuation_range[1],
+                'suggested_valuation': sum(self.implied_valuation_range) / 2
+            }
+
+        # Determine target valuation based on conviction
+        min_val, max_val = self.implied_valuation_range
+
+        # Clamp to offer progression constraints if improving
+        if constraints.get('must_improve') and 'last_valuation' in constraints:
+            min_val = max(min_val, constraints['last_valuation'] * 1.02)
+
+        # Higher conviction = closer to max valuation
+        if self.capital_conviction == 'high':
+            target_val = max_val * 0.90
+        elif self.capital_conviction == 'medium':
+            target_val = (min_val + max_val) / 2
+        else:
+            target_val = min_val * 1.10
+
+        # Clamp target to bounds
+        target_val = max(min_val, min(target_val, constraints.get('max_valuation', max_val)))
+
+        # Apply negotiation willingness
+        target_val = target_val * self.negotiation_willingness
+
+        # Calculate equity from valuation
+        equity = (ask_amount / target_val) * 100 if target_val > 0 else 50
+        equity = round(min(equity, 50), 1)  # Cap at 50%
+
+        return {
+            'amount': ask_amount,
+            'equity': equity,
+            'implied_valuation': int(target_val),
+            'conviction': self.capital_conviction,
+            'constraints_used': constraints
+        }
+
+    def record_offer_made(self, offer):
+        """Record that this shark made an offer."""
+        self.last_offer = offer
+        if self.offer_progression:
+            self.offer_progression.record_offer(offer)
+
+    def record_rejection(self):
+        """Record that founder rejected/declined our offer."""
+        self.negotiation_willingness = max(0.5, self.negotiation_willingness - 0.1)
+        if self.offer_progression:
+            self.offer_progression.record_rejection()
+
+    def record_counter(self):
+        """Record that founder countered our offer."""
+        if self.offer_progression:
+            self.offer_progression.record_counter()
+
+    def see_competing_offer(self, offer):
+        """Record seeing a competing offer from another shark."""
+        self.competing_offers_seen.append({
+            'shark_id': offer.get('sharkId'),
+            'valuation': offer.get('implied_valuation', 0),
+            'timestamp': time.time()
+        })
+
+    def get_best_competing_valuation(self):
+        """Get the highest competing valuation seen."""
+        if not self.competing_offers_seen:
+            return 0
+        return max(o['valuation'] for o in self.competing_offers_seen)
+
+    def should_beat_competitor(self):
+        """Determine if we should try to beat competing offers."""
+        if not self.competing_offers_seen:
+            return False, 0
+
+        best_competing = self.get_best_competing_valuation()
+        our_best = self.last_offer.get('implied_valuation', 0) if self.last_offer else 0
+
+        # Only beat if we're highly convicted and they're offering more
+        if self.capital_conviction == 'high' and best_competing > our_best:
+            # Beat by 5%
+            return True, best_competing * 1.05
+
+        return False, 0
+
+    def get_appropriate_deal_types(self):
+        """Get deal types this investor can use given their belief state."""
+        archetype = INVESTOR_ARCHETYPES.get(self.shark_id, {})
+        allowed = archetype.get('allowed_deals', ['cash_equity'])
+
+        appropriate = []
+        for deal_type in allowed:
+            # cash_equity requires meeting stage requirements
+            if deal_type == 'cash_equity':
+                min_stage = archetype.get('min_stage_for_cash_equity', 'idea')
+                current_idx = STAGE_HIERARCHY.index(self.perceived_stage) if self.perceived_stage in STAGE_HIERARCHY else 0
+                min_idx = STAGE_HIERARCHY.index(min_stage) if min_stage in STAGE_HIERARCHY else 0
+                if current_idx >= min_idx and self.capital_conviction != 'low':
+                    appropriate.append(deal_type)
+            # SAFE/milestone deals are for lower conviction
+            elif deal_type in ['safe_cap', 'safe_milestone', 'tranche']:
+                appropriate.append(deal_type)
+            # Royalty always available if allowed
+            elif deal_type == 'royalty':
+                appropriate.append(deal_type)
+
+        return appropriate if appropriate else ['no_offer']
+
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization."""
+        return {
+            'shark_id': self.shark_id,
+            'perceived_stage': self.perceived_stage,
+            'key_risks': self.key_risks,
+            'required_proof': self.required_proof,
+            'capital_conviction': self.capital_conviction,
+            'stated_concerns': self.stated_concerns,
+            'stated_positives': self.stated_positives,
+            'implied_valuation_range': list(self.implied_valuation_range),
+            'questions_asked': self.questions_asked,
+            'action_history': self.action_history,
+            # New fields
+            'proof_tracker': self.proof_tracker.to_dict() if self.proof_tracker else None,
+            'offer_progression': self.offer_progression.to_dict() if self.offer_progression else None,
+            'negotiation_willingness': self.negotiation_willingness,
+            'competing_offers_seen': self.competing_offers_seen,
+            'last_offer': self.last_offer,
+            'initial_ask_valuation': self.initial_ask_valuation
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        """Reconstruct from dictionary."""
+        state = cls(data.get('shark_id', 'marcus'))
+        state.perceived_stage = data.get('perceived_stage', 'idea')
+        state.key_risks = data.get('key_risks', [])
+        state.required_proof = data.get('required_proof', [])
+        state.capital_conviction = data.get('capital_conviction', 'low')
+        state.stated_concerns = data.get('stated_concerns', [])
+        state.stated_positives = data.get('stated_positives', [])
+        state.implied_valuation_range = tuple(data.get('implied_valuation_range', [0, 0]))
+        state.questions_asked = data.get('questions_asked', [])
+        state.action_history = data.get('action_history', [])
+        # New fields
+        if data.get('proof_tracker'):
+            state.proof_tracker = ProofTracker.from_dict(data['proof_tracker'])
+        if data.get('offer_progression'):
+            state.offer_progression = OfferProgression.from_dict(data['offer_progression'])
+        state.negotiation_willingness = data.get('negotiation_willingness', 1.0)
+        state.competing_offers_seen = data.get('competing_offers_seen', [])
+        state.last_offer = data.get('last_offer')
+        state.initial_ask_valuation = data.get('initial_ask_valuation', 0)
+        return state
 
 
 class SharkManager:
@@ -511,5 +1025,287 @@ class SharkManager:
         # Add unique ID for offer tracking
         import uuid
         offer['id'] = str(uuid.uuid4())[:8]
+
+        return offer
+
+    def validate_offer_consistency(self, shark_id, belief_state, proposed_offer):
+        """
+        Validates that an offer is consistent with the investor's belief state.
+        Returns (is_valid, reason) tuple.
+        """
+        archetype = INVESTOR_ARCHETYPES.get(shark_id, {})
+
+        # Check 1: Deal type is allowed for this archetype
+        deal_type = proposed_offer.get('deal_type', 'cash_equity')
+        if deal_type in archetype.get('disallowed_deals', []):
+            return False, f"Deal type '{deal_type}' not allowed for this investor"
+
+        if deal_type not in archetype.get('allowed_deals', ['cash_equity']):
+            return False, f"Deal type '{deal_type}' not in investor's repertoire"
+
+        # Check 2: Stage requirements for cash equity
+        if deal_type == 'cash_equity':
+            min_stage = archetype.get('min_stage_for_cash_equity', 'idea')
+            perceived_stage = belief_state.perceived_stage if hasattr(belief_state, 'perceived_stage') else belief_state.get('perceived_stage', 'idea')
+            current_idx = STAGE_HIERARCHY.index(perceived_stage) if perceived_stage in STAGE_HIERARCHY else 0
+            min_idx = STAGE_HIERARCHY.index(min_stage) if min_stage in STAGE_HIERARCHY else 0
+
+            if current_idx < min_idx:
+                return False, f"Investor requires {min_stage} stage for cash equity deals"
+
+        # Check 3: Valuation consistency
+        implied_val = proposed_offer.get('implied_valuation', 0)
+        if implied_val > 0:
+            val_range = belief_state.implied_valuation_range if hasattr(belief_state, 'implied_valuation_range') else belief_state.get('implied_valuation_range', (0, float('inf')))
+            min_val, max_val = val_range
+            # Allow some flexibility but not wild swings
+            if implied_val < min_val * 0.5:
+                return False, "Implied valuation too low vs stated beliefs"
+            if implied_val > max_val * 2:
+                return False, "Implied valuation too high vs stated beliefs"
+
+        # Check 4: Cannot make unconditional offer if proof required
+        required_proof = belief_state.required_proof if hasattr(belief_state, 'required_proof') else belief_state.get('required_proof', [])
+        conditions = proposed_offer.get('conditions', [])
+        if required_proof and not conditions and deal_type == 'cash_equity':
+            return False, "Investor stated proof required but offer has no conditions"
+
+        # Check 5: Cannot contradict stated concerns
+        stated_concerns = belief_state.stated_concerns if hasattr(belief_state, 'stated_concerns') else belief_state.get('stated_concerns', [])
+        if stated_concerns and deal_type == 'cash_equity':
+            conviction = belief_state.capital_conviction if hasattr(belief_state, 'capital_conviction') else belief_state.get('capital_conviction', 'low')
+            if conviction == 'low':
+                return False, "Capital conviction too low for unconditional offer"
+
+        return True, None
+
+    def generate_structured_offer(self, shark_id, pitch_data, belief_state, confidence):
+        """
+        Generate an offer with full deal structure based on belief state.
+        Returns offer dict with deal_type, terms, conditions, rationale, etc.
+        """
+        import uuid
+
+        ask_amount = pitch_data.get('amountRaising', 100000)
+        ask_equity = pitch_data.get('equityPercent', 10)
+        implied_val_from_ask = ask_amount / (ask_equity / 100) if ask_equity > 0 else ask_amount * 10
+
+        archetype = INVESTOR_ARCHETYPES.get(shark_id, {})
+
+        # Determine appropriate deal type based on belief state
+        appropriate_types = belief_state.get_appropriate_deal_types() if hasattr(belief_state, 'get_appropriate_deal_types') else ['cash_equity']
+
+        # Select best deal type
+        deal_type = self._select_deal_type(shark_id, appropriate_types, belief_state, confidence)
+
+        # Build offer based on deal type
+        offer = {
+            'id': str(uuid.uuid4())[:8],
+            'sharkId': shark_id,
+            'sharkName': self.get_shark_name(shark_id),
+            'deal_type': deal_type,
+            'terms': {},
+            'conditions': [],
+            'implied_valuation': 0,
+            'rationale': '',
+            'belief_state_snapshot': belief_state.to_dict() if hasattr(belief_state, 'to_dict') else belief_state
+        }
+
+        # Generate terms based on deal type
+        if deal_type == 'cash_equity':
+            offer = self._generate_cash_equity_terms(offer, shark_id, ask_amount, ask_equity, confidence)
+
+        elif deal_type == 'royalty':
+            offer = self._generate_royalty_terms(offer, shark_id, ask_amount, ask_equity, confidence)
+
+        elif deal_type == 'safe_cap':
+            offer = self._generate_safe_cap_terms(offer, shark_id, ask_amount, implied_val_from_ask, confidence)
+
+        elif deal_type == 'safe_milestone':
+            offer = self._generate_safe_milestone_terms(offer, shark_id, ask_amount, implied_val_from_ask, belief_state, confidence)
+
+        elif deal_type == 'tranche':
+            offer = self._generate_tranche_terms(offer, shark_id, ask_amount, ask_equity, belief_state, confidence)
+
+        else:  # no_offer
+            offer = self._generate_no_offer_terms(offer, shark_id, belief_state)
+
+        # Validate before returning
+        is_valid, reason = self.validate_offer_consistency(shark_id, belief_state, offer)
+        if not is_valid:
+            # Fall back to a conditional offer if validation fails
+            offer['deal_type'] = 'no_offer'
+            offer['conditions'] = belief_state.required_proof if hasattr(belief_state, 'required_proof') else []
+            offer['rationale'] = f"Cannot make direct offer: {reason}"
+
+        # Add backwards-compatible fields
+        offer['amount'] = offer['terms'].get('amount', ask_amount)
+        offer['equity'] = offer['terms'].get('equity', ask_equity)
+        offer['royalty'] = offer['terms'].get('royalty_percent')
+        offer['royaltyUntil'] = offer['terms'].get('royalty_cap')
+
+        return offer
+
+    def _select_deal_type(self, shark_id, appropriate_types, belief_state, confidence):
+        """Select the best deal type for this situation."""
+        archetype = INVESTOR_ARCHETYPES.get(shark_id, {})
+
+        # Victor strongly prefers royalty
+        if shark_id == 'victor' and 'royalty' in appropriate_types:
+            return 'royalty'
+
+        # High confidence -> cash equity if allowed
+        if confidence >= 75 and 'cash_equity' in appropriate_types:
+            return 'cash_equity'
+
+        # Daniel/Elena prefer milestone deals for uncertain situations
+        if shark_id in ['daniel', 'elena'] and confidence < 70:
+            if 'safe_milestone' in appropriate_types:
+                return 'safe_milestone'
+            if 'tranche' in appropriate_types:
+                return 'tranche'
+
+        # Marcus prefers SAFE for high-valuation tech
+        if shark_id == 'marcus' and 'safe_cap' in appropriate_types:
+            conviction = belief_state.capital_conviction if hasattr(belief_state, 'capital_conviction') else belief_state.get('capital_conviction', 'low')
+            if conviction == 'medium':
+                return 'safe_cap'
+
+        # Default to first appropriate type
+        return appropriate_types[0] if appropriate_types else 'no_offer'
+
+    def _generate_cash_equity_terms(self, offer, shark_id, ask_amount, ask_equity, confidence):
+        """Generate cash for equity offer terms."""
+        # Shark-specific equity adjustments
+        if shark_id == 'marcus':
+            equity = ask_equity if confidence > 85 else min(ask_equity + random.randint(5, 15), 50)
+        elif shark_id == 'richard':
+            equity = ask_equity if confidence > 80 else ask_equity + random.randint(2, 7)
+        elif shark_id == 'elena':
+            equity = ask_equity + random.randint(3, 8)
+            offer['conditions'].append('Exclusive retail/QVC rights')
+        elif shark_id == 'daniel':
+            equity = ask_equity + random.randint(0, 10)
+            if confidence > 80:
+                offer['conditions'].append('Mentorship and tech advisory')
+        else:
+            equity = ask_equity + random.randint(5, 10)
+
+        # Lower confidence = worse terms
+        if confidence < 70:
+            equity = min(equity + 10, 50)
+
+        offer['terms'] = {
+            'amount': ask_amount,
+            'equity': equity
+        }
+        offer['implied_valuation'] = int(ask_amount / (equity / 100)) if equity > 0 else ask_amount * 10
+        offer['rationale'] = f"Direct investment at {equity}% equity"
+
+        return offer
+
+    def _generate_royalty_terms(self, offer, shark_id, ask_amount, ask_equity, confidence):
+        """Generate royalty deal terms."""
+        royalty_percent = round(random.uniform(1.5, 3.5), 2)
+        royalty_cap = ask_amount * random.uniform(1.5, 2.5)
+        equity = max(ask_equity - 5, 5)
+
+        offer['terms'] = {
+            'amount': ask_amount,
+            'equity': equity,
+            'royalty_percent': royalty_percent,
+            'royalty_cap': int(royalty_cap)
+        }
+        offer['implied_valuation'] = int(ask_amount / (equity / 100)) if equity > 0 else ask_amount * 10
+        offer['rationale'] = f"${royalty_percent}/unit royalty until ${int(royalty_cap)} recouped, plus {equity}% equity"
+
+        return offer
+
+    def _generate_safe_cap_terms(self, offer, shark_id, ask_amount, implied_val, confidence):
+        """Generate SAFE with valuation cap terms."""
+        # Cap at a discount to current ask valuation
+        discount = 0.8 if confidence > 70 else 0.7
+        valuation_cap = int(implied_val * discount)
+
+        offer['terms'] = {
+            'amount': ask_amount,
+            'valuation_cap': valuation_cap
+        }
+        offer['implied_valuation'] = valuation_cap
+        offer['rationale'] = f"SAFE note with ${valuation_cap:,} cap - converts at next priced round"
+
+        return offer
+
+    def _generate_safe_milestone_terms(self, offer, shark_id, ask_amount, implied_val, belief_state, confidence):
+        """Generate SAFE with milestone trigger terms."""
+        required_proof = belief_state.required_proof if hasattr(belief_state, 'required_proof') else belief_state.get('required_proof', [])
+
+        # Define milestone based on what proof is needed
+        if required_proof:
+            milestone = required_proof[0]
+        else:
+            milestones = [
+                "Achieve $100k in revenue",
+                "Reach 10,000 active users",
+                "Close 3 enterprise customers",
+                "Launch MVP in market"
+            ]
+            milestone = random.choice(milestones)
+
+        valuation_cap = int(implied_val * 0.75)
+
+        offer['terms'] = {
+            'amount': ask_amount,
+            'valuation_cap': valuation_cap,
+            'milestone': milestone
+        }
+        offer['conditions'] = [milestone]
+        offer['implied_valuation'] = valuation_cap
+        offer['rationale'] = f"SAFE converts when: {milestone}"
+
+        return offer
+
+    def _generate_tranche_terms(self, offer, shark_id, ask_amount, ask_equity, belief_state, confidence):
+        """Generate tranche-based investment terms."""
+        required_proof = belief_state.required_proof if hasattr(belief_state, 'required_proof') else belief_state.get('required_proof', [])
+
+        # Split into 2-3 tranches
+        tranche1_amount = int(ask_amount * 0.4)
+        tranche2_amount = int(ask_amount * 0.35)
+        tranche3_amount = ask_amount - tranche1_amount - tranche2_amount
+
+        tranches = [
+            {'amount': tranche1_amount, 'trigger': 'Upon signing', 'equity': int(ask_equity * 0.4)},
+            {'amount': tranche2_amount, 'trigger': required_proof[0] if required_proof else 'Hit first milestone', 'equity': int(ask_equity * 0.35)},
+            {'amount': tranche3_amount, 'trigger': 'Achieve growth targets', 'equity': ask_equity - int(ask_equity * 0.75)}
+        ]
+
+        offer['terms'] = {
+            'total_amount': ask_amount,
+            'tranches': tranches
+        }
+        offer['conditions'] = [t['trigger'] for t in tranches[1:]]
+        offer['implied_valuation'] = int(ask_amount / (ask_equity / 100)) if ask_equity > 0 else ask_amount * 10
+        offer['rationale'] = f"${tranche1_amount:,} now, rest upon milestones"
+
+        return offer
+
+    def _generate_no_offer_terms(self, offer, shark_id, belief_state):
+        """Generate conditional no-offer with return conditions."""
+        required_proof = belief_state.required_proof if hasattr(belief_state, 'required_proof') else belief_state.get('required_proof', [])
+        stated_concerns = belief_state.stated_concerns if hasattr(belief_state, 'stated_concerns') else belief_state.get('stated_concerns', [])
+
+        conditions = required_proof.copy() if required_proof else []
+        if stated_concerns and not conditions:
+            conditions = [f"Address: {concern}" for concern in stated_concerns[:2]]
+
+        if not conditions:
+            conditions = ["Come back with more traction"]
+
+        offer['terms'] = {
+            'conditions_to_return': conditions
+        }
+        offer['conditions'] = conditions
+        offer['rationale'] = "Not ready to invest yet - come back when conditions met"
 
         return offer
