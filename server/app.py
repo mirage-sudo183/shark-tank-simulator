@@ -203,11 +203,11 @@ def firebase_env():
     """Serve Firebase config from environment variables."""
     config = {
         'apiKey': os.getenv('FIREBASE_API_KEY', ''),
-        'authDomain': os.getenv('FIREBASE_AUTH_DOMAIN', 'shark-tank-sim-app.firebaseapp.com'),
-        'projectId': os.getenv('FIREBASE_PROJECT_ID', 'shark-tank-sim-app'),
-        'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'shark-tank-sim-app.firebasestorage.app'),
-        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '251441258382'),
-        'appId': os.getenv('FIREBASE_APP_ID', '1:251441258382:web:461a1c7040a8db960f4edf')
+        'authDomain': os.getenv('FIREBASE_AUTH_DOMAIN', 'shark-tank-sim-app-74260.firebaseapp.com'),
+        'projectId': os.getenv('FIREBASE_PROJECT_ID', 'shark-tank-sim-app-74260'),
+        'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'shark-tank-sim-app-74260.appspot.com'),
+        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '300432298096'),
+        'appId': os.getenv('FIREBASE_APP_ID', '')
     }
     js_content = f"window.FIREBASE_CONFIG = {json.dumps(config)};\n"
     return Response(js_content, mimetype='application/javascript')

@@ -3,9 +3,9 @@
 // Get your API key from: Firebase Console > Project Settings > General > Your apps > Web app
 window.FIREBASE_CONFIG = {
   apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "shark-tank-sim-app.firebaseapp.com",
-  projectId: "shark-tank-sim-app",
-  storageBucket: "shark-tank-sim-app.firebasestorage.app",
-  messagingSenderId: "251441258382",
-  appId: "1:251441258382:web:461a1c7040a8db960f4edf"
+  authDomain: "shark-tank-sim-app-74260.firebaseapp.com",
+  projectId: "shark-tank-sim-app-74260",
+  storageBucket: "shark-tank-sim-app-74260.appspot.com",
+  messagingSenderId: "300432298096",
+  appId: "YOUR_FIREBASE_APP_ID"
 };
