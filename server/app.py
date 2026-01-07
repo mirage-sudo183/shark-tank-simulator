@@ -198,6 +198,21 @@ def index():
     return send_from_directory('..', 'index.html')
 
 
+@app.route('/firebase-env.js')
+def firebase_env():
+    """Serve Firebase config from environment variables."""
+    config = {
+        'apiKey': os.getenv('FIREBASE_API_KEY', ''),
+        'authDomain': os.getenv('FIREBASE_AUTH_DOMAIN', 'shark-tank-sim-app.firebaseapp.com'),
+        'projectId': os.getenv('FIREBASE_PROJECT_ID', 'shark-tank-sim-app'),
+        'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'shark-tank-sim-app.firebasestorage.app'),
+        'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '251441258382'),
+        'appId': os.getenv('FIREBASE_APP_ID', '1:251441258382:web:461a1c7040a8db960f4edf')
+    }
+    js_content = f"window.FIREBASE_CONFIG = {json.dumps(config)};\n"
+    return Response(js_content, mimetype='application/javascript')
+
+
 @app.route('/<path:path>')
 def static_files(path):
     return send_from_directory('..', path)
