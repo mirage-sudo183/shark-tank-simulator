@@ -205,7 +205,7 @@ def firebase_env():
         'apiKey': os.getenv('FIREBASE_API_KEY', ''),
         'authDomain': os.getenv('FIREBASE_AUTH_DOMAIN', 'shark-tank-sim-app-74260.firebaseapp.com'),
         'projectId': os.getenv('FIREBASE_PROJECT_ID', 'shark-tank-sim-app-74260'),
-        'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'shark-tank-sim-app-74260.appspot.com'),
+        'storageBucket': os.getenv('FIREBASE_STORAGE_BUCKET', 'shark-tank-sim-app-74260.firebasestorage.app'),
         'messagingSenderId': os.getenv('FIREBASE_MESSAGING_SENDER_ID', '300432298096'),
         'appId': os.getenv('FIREBASE_APP_ID', '')
     }
