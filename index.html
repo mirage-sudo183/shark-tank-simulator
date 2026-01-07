@@ -9,79 +9,16 @@
 <body>
   <div class="app">
     <!-- ========================================
-         VIEW 0: Auth / Login
+         VIEW 0: Auth / Login (HIDDEN - No auth version)
          ======================================== -->
-    <div class="view view--auth" id="authView">
-      <div class="auth-container">
-        <div class="auth-header">
-          <div class="auth-logo">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <polygon points="23 7 16 12 23 17 23 7"/>
-              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-            </svg>
-          </div>
-          <h1 class="auth-title">Shark Tank Simulator</h1>
-          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
-        </div>
-
-        <!-- Login buttons (shown when not logged in) -->
-        <div class="auth-content" id="authLoginContent">
-          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-            Sign in with X (Twitter)
-          </button>
-
-          <p class="auth-note">
-            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
-          </p>
-
-          <div class="auth-divider">
-            <span>or</span>
-          </div>
-
-          <button class="auth-btn auth-btn--guest" id="guestBtn">
-            Continue as Guest
-          </button>
-          <p class="auth-guest-note">
-            Guest pitches won't appear on the leaderboard
-          </p>
-        </div>
-
-        <!-- Logged in state (shown when logged in) -->
-        <div class="auth-content auth-logged-in" id="authLoggedInContent" style="display: none;">
-          <div class="auth-user-info">
-            <img class="auth-user-avatar" id="authUserAvatar" src="" alt="User">
-            <span class="auth-user-name" id="authUserName">@username</span>
-          </div>
-
-          <button class="auth-btn auth-btn--primary" id="continueToFormBtn">
-            Continue to Pitch Form
-          </button>
-
-          <button class="auth-btn auth-btn--secondary" id="authLogoutBtn">
-            Sign Out
-          </button>
-        </div>
-
-        <div class="auth-footer">
-          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 20V10"/>
-              <path d="M18 20V4"/>
-              <path d="M6 20v-4"/>
-            </svg>
-            View Leaderboard
-          </button>
-        </div>
-      </div>
+    <div class="view view--auth" id="authView" style="display: none;">
+      <!-- Auth view removed for no-login version -->
     </div>
 
     <!-- ========================================
          VIEW 1: Entry Form
          ======================================== -->
-    <div class="view view--entry" id="entryView" style="display: none;">
+    <div class="view view--entry" id="entryView">
       <div class="entry-container">
         <!-- User Profile Bar (shown when logged in) -->
         <div class="user-bar" id="userBar" style="display: none;">
@@ -107,8 +44,8 @@
           </div>
         </div>
 
-        <!-- Back to Auth button (always visible) -->
-        <div class="entry-back-row">
+        <!-- Back to Auth button (hidden in no-login version) -->
+        <div class="entry-back-row" style="display: none;">
           <button type="button" class="entry-back-btn" id="backToAuthBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5"/>
@@ -189,8 +126,8 @@
             </div>
           </div>
 
-          <!-- Verification Section (shows when user is logged in and has revenue/users) -->
-          <div class="form-group form-group--verification" id="verificationSection" style="display: none;">
+          <!-- Verification Section (hidden in no-login version) -->
+          <div class="form-group form-group--verification" id="verificationSection" style="display: none !important;">
             <label class="form-label">Verify your metrics (optional)</label>
             <p class="form-hint verification-hint">Verified metrics appear on the leaderboard with a badge</p>
 
@@ -278,9 +215,21 @@
 
           <!-- Submit -->
           <button type="submit" class="entry-submit">Enter the Panel</button>
-          
-          <!-- Skip button (testing only) -->
-          <button type="button" class="entry-skip" id="skipBtn">Skip to Panel (Dev)</button>
+
+          <!-- Quick Test section - skips pitch, starts with offer -->
+          <div class="quick-test-section">
+            <div class="quick-test-label">Quick Test Mode</div>
+            <div class="quick-test-controls">
+              <select id="quickTestShark" class="quick-test-select">
+                <option value="victor">Victor Slate (Royalty Deals)</option>
+                <option value="marcus">Marcus Kellan (Tech/Equity)</option>
+                <option value="elena">Elena Brooks (Retail/Milestones)</option>
+                <option value="richard">Richard Sterling (Brand/Vision)</option>
+                <option value="daniel">Daniel Chen (Mentor/Stages)</option>
+              </select>
+              <button type="button" class="entry-skip" id="skipBtn">🧪 Test Offer</button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -304,15 +253,8 @@
          VIEW 3: Panel (Video Call UI)
          ======================================== -->
     <div class="view view--panel" id="panelView" style="display: none;">
-      <!-- Demo Mode Banner (shown for guests) -->
-      <div id="demoBanner" class="demo-banner" style="display: none;">
-        <div class="demo-banner-content">
-          <span class="demo-badge">DEMO MODE</span>
-          <span class="demo-text">This is a preview. Sign in to pitch for real!</span>
-          <button id="demoSignInBtn" class="demo-cta">
-            Sign in with <span class="x-logo">&#120143;</span>
-          </button>
-        </div>
+      <!-- Demo Mode Banner (hidden in no-login version - everyone gets real AI) -->
+      <div id="demoBanner" class="demo-banner" style="display: none !important;">
       </div>
 
       <!-- Top Header Bar (Light) -->
@@ -456,7 +398,13 @@
         <!-- Chat Panel -->
         <aside class="chat-panel">
           <div class="chat-header">
-            <span class="chat-title">Panel</span>
+            <div class="chat-tabs">
+              <button class="chat-tab chat-tab--active" id="chatTabBtn" data-tab="chat">Chat</button>
+              <button class="chat-tab" id="offersTabBtn" data-tab="offers">
+                Offers
+                <span class="offers-badge" id="offersBadge" style="display: none;">0</span>
+              </button>
+            </div>
             <button class="chat-menu-btn" title="More options">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="1"/>
@@ -466,10 +414,20 @@
             </button>
           </div>
 
+          <!-- Chat Messages Tab -->
           <div class="chat-messages" id="chatMessages">
             <div class="message message--system">
               <p class="message-text">The panel has begun. Good luck.</p>
             </div>
+          </div>
+
+          <!-- Offers Tab -->
+          <div class="offers-panel" id="offersPanel" style="display: none;">
+            <div class="offers-empty" id="offersEmpty">
+              <p>No active offers yet.</p>
+              <p class="offers-hint">When sharks make offers, they'll appear here with a 60-second timer.</p>
+            </div>
+            <div class="offers-list" id="offersList"></div>
           </div>
 
           <div class="chat-input-area">
@@ -520,6 +478,13 @@
         </div>
         <p class="modal-subtitle">Make a counter offer to <span id="counterSharkName">the investor</span></p>
         <input type="hidden" id="counterOfferId" value="">
+        <input type="hidden" id="counterDealType" value="cash_equity">
+
+        <!-- Original offer display -->
+        <div class="original-offer-display" id="originalOfferDisplay">
+          <div class="original-offer-label">Their offer:</div>
+          <div class="original-offer-terms" id="originalOfferTerms">$100,000 for 10%</div>
+        </div>
 
         <div class="modal-form">
           <div class="form-group">
@@ -533,9 +498,19 @@
           <div class="form-group">
             <label class="form-label" for="counterEquity">Equity you'll give</label>
             <div class="input-with-suffix">
-              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="1" max="100">
+              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="0" max="100">
               <span class="input-suffix">%</span>
             </div>
+          </div>
+
+          <!-- Royalty fields - shown for royalty deals -->
+          <div class="form-group royalty-fields" id="royaltyFields" style="display: none;">
+            <label class="form-label" for="counterRoyalty">Royalty per unit</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="counterRoyalty" value="2" min="0" step="0.5">
+            </div>
+            <p class="form-hint">Amount per unit until investment is recouped</p>
           </div>
         </div>
 
@@ -547,9 +522,9 @@
     </div>
 
     <!-- ========================================
-         VIEW: Leaderboard
+         VIEW: Leaderboard (hidden in no-login version)
          ======================================== -->
-    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none !important;">
       <div class="leaderboard-container">
         <div class="leaderboard-header">
           <button class="leaderboard-back" id="leaderboardBackBtn">
@@ -598,34 +573,10 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
-  <!-- Load Firebase config from gitignored file first -->
-  <script src="firebase-env.js"></script>
-  <script type="module">
-    import {
-      signInWithTwitter,
-      signOutUser,
-      onAuthChange,
-      getCurrentUser,
-      getIdToken,
-      savePitchResult,
-      getLeaderboard,
-      getUserBestPitch
-    } from './firebase-config.js';
-
-    // Expose Firebase functions to window for app.js
-    window.firebaseAuth = {
-      signInWithTwitter,
-      signOutUser,
-      onAuthChange,
-      getCurrentUser,
-      getIdToken,
-      savePitchResult,
-      getLeaderboard,
-      getUserBestPitch
-    };
-
-    // Dispatch event when Firebase is ready
+  <!-- Firebase SDK removed - No login version -->
+  <script>
+    // No Firebase auth needed in this version
+    window.firebaseAuth = null;
     window.dispatchEvent(new Event('firebase-ready'));
   </script>
   <script src="app.js"></script>
