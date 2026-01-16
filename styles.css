@@ -4420,19 +4420,10 @@ a,
 
 /* Credits Banner (Panel View) */
 .credits-banner {
-  position: fixed;
-  top: 60px; /* Below the header */
-  left: 0;
-  right: 0;
-  z-index: 100;
+  position: relative;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   padding: 8px 16px;
-}
-
-@media (max-width: 768px) {
-  .credits-banner {
-    top: 44px; /* Mobile header is smaller */
-  }
+  z-index: 50;
 }
 
 .credits-banner-content {

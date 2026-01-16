@@ -1945,16 +1945,22 @@
   function checkAllSharksOut() {
     const allParticipants = document.querySelectorAll('[data-investor]');
     let allOut = true;
+    let outCount = 0;
 
     allParticipants.forEach(p => {
       const video = p.querySelector('.participant-video');
-      if (!video.classList.contains('participant-video--out')) {
+      if (video.classList.contains('participant-video--out')) {
+        outCount++;
+      } else {
         allOut = false;
       }
     });
 
-    if (allOut) {
+    console.log('[checkAllSharksOut] Out count:', outCount, '/', allParticipants.length, 'allOut:', allOut);
+
+    if (allOut && allParticipants.length > 0) {
       // All sharks are out - show sad ending
+      console.log('[checkAllSharksOut] All sharks are out! Showing sad ending.');
       showSadEnding();
     }
   }
@@ -2685,8 +2691,11 @@
   }
 
   async function endPitchPhase() {
+    console.log('[endPitchPhase] Called with currentPhase:', currentPhase);
+
     if (currentPhase === 'pitch') {
       // Transition from pitch to Q&A
+      console.log('[endPitchPhase] Transitioning from pitch to Q&A');
       currentPhase = 'qa';
 
       // Store pitch transcript and time used
@@ -2757,9 +2766,11 @@
 
     } else if (currentPhase === 'closed') {
       // Deal is done, show summary
+      console.log('[endPitchPhase] Phase is closed, showing deal summary');
       showDealSummary();
     } else {
-      // End the entire session
+      // Q&A phase - clicking "Leave Panel" ends the session
+      console.log('[endPitchPhase] Phase is', currentPhase, '- ending session');
       endSession();
     }
   }
@@ -3879,19 +3890,29 @@
   }
 
   function startTimer() {
+    // Clear any existing timer first
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
     // Timer for pitch phase countdown
-    console.log('[Timer] Starting pitch timer - 1 minute countdown');
+    console.log('[Timer] Starting timer - currentPhase:', currentPhase, 'pitchTimeRemaining:', pitchTimeRemaining);
 
     // Update display immediately
     updateTimerDisplay();
 
-    // Only keep pitch timer for auto-ending pitch phase
+    // Only run pitch timer during pitch phase
     if (currentPhase === 'pitch') {
+      console.log('[Timer] Starting 1-minute pitch countdown');
       timerInterval = setInterval(() => {
         pitchTimeRemaining--;
         updateTimerDisplay(); // Update the visual display
+        console.log('[Timer] Pitch time remaining:', pitchTimeRemaining);
         if (pitchTimeRemaining <= 0) {
           clearInterval(timerInterval);
+          timerInterval = null;
+          console.log('[Timer] Pitch time up - transitioning to Q&A');
           endPitchPhase();
         }
       }, 1000);
