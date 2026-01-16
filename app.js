@@ -2523,6 +2523,12 @@
     if (endBtn) {
       endBtn.addEventListener('click', endPitchPhase);
     }
+
+    // Mobile end button (in header)
+    const mobileEndBtn = document.getElementById('mobileEndBtn');
+    if (mobileEndBtn) {
+      mobileEndBtn.addEventListener('click', endPitchPhase);
+    }
   }
 
   async function endPitchPhase() {
@@ -2539,6 +2545,13 @@
       if (endBtn) {
         endBtn.textContent = 'Leave Panel';
         endBtn.classList.add('leave-btn--final');
+      }
+
+      // Update mobile end button too
+      const mobileEndBtn = document.getElementById('mobileEndBtn');
+      if (mobileEndBtn) {
+        mobileEndBtn.textContent = 'Leave';
+        mobileEndBtn.classList.add('leave-btn--final');
       }
 
       // Update caption

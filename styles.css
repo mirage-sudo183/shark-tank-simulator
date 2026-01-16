@@ -548,6 +548,31 @@ body {
   gap: 12px;
 }
 
+/* Mobile End Pitch button - only visible on mobile */
+.mobile-end-btn {
+  display: none;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger-red);
+  background: transparent;
+  border: 1px solid var(--danger-red);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mobile-end-btn:hover {
+  background: var(--danger-red);
+  color: white;
+}
+
+@media (max-width: 900px) {
+  .mobile-end-btn {
+    display: block;
+  }
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;
@@ -1399,94 +1424,56 @@ body {
 
 /* ========================================
    Responsive - Mobile First Design
+   Optimized for sharks visibility + chat usability
    ======================================== */
 
-/* Tablet and below */
+/* Tablet and below - Stacked layout with shark grid */
 @media (max-width: 900px) {
   .main-wrapper {
     flex-direction: column;
+    height: 100%;
   }
 
+  /* Compact video area - sharks only, no featured */
   .video-area {
     flex: 0 0 auto;
     min-height: auto;
     padding: 8px;
+    gap: 8px;
   }
 
-  .participants {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
-    gap: 8px;
-    padding-bottom: 8px;
-    -webkit-overflow-scrolling: touch;
+  /* Hide the featured video on mobile - focus on sharks */
+  .featured-video {
+    display: none;
+  }
+
+  /* Hide controls bar on mobile to save space */
+  .controls-bar {
+    display: none;
+  }
+
+  /* 2x3 grid for shark strip */
+  .participant-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, auto);
+    gap: 6px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  /* Hide the "You" participant on mobile - it's in the chat area */
+  .participant--you {
+    display: none;
   }
 
   .participant {
-    width: 100px;
+    width: 100%;
     flex-shrink: 0;
   }
 
   .participant-video {
     height: 70px;
-  }
-
-  .participant-name {
-    font-size: 10px;
-  }
-
-  .participant-badge {
-    font-size: 8px;
-    padding: 2px 6px;
-  }
-
-  .chat-panel {
-    flex: 1;
-    width: 100%;
-    max-width: none;
-    border-left: none;
-    border-top: 1px solid var(--surface-4);
-  }
-
-  .controls {
-    padding: 8px 12px;
-  }
-}
-
-/* Mobile phones */
-@media (max-width: 600px) {
-  .header {
-    padding: 8px 12px;
-    height: auto;
-    min-height: 48px;
-  }
-
-  .meeting-title {
-    font-size: 12px;
-  }
-
-  .header-left .logo {
-    display: none;
-  }
-
-  .search-box {
-    display: none;
-  }
-
-  .video-area {
-    padding: 6px;
-  }
-
-  .participants {
-    gap: 6px;
-  }
-
-  .participant {
-    width: 80px;
-  }
-
-  .participant-video {
-    height: 60px;
     border-radius: 8px;
   }
 
@@ -1497,91 +1484,181 @@ body {
 
   .participant-badge {
     font-size: 7px;
-    padding: 1px 4px;
-    top: 4px;
-    right: 4px;
+    padding: 2px 5px;
   }
 
-  .controls {
-    padding: 6px 8px;
-    gap: 6px;
-  }
-
-  .control-btn {
-    width: 40px;
-    height: 40px;
-  }
-
+  /* Chat panel takes most of the screen */
   .chat-panel {
-    min-height: 300px;
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid var(--surface-4);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
-  .panel-tabs {
-    padding: 8px;
+  /* Make chat messages scrollable and flexible */
+  .chat-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px;
   }
 
-  .panel-tab {
-    padding: 6px 10px;
+  /* Compact header for mobile */
+  .chat-header {
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+
+  .chat-tab {
+    padding: 6px 12px;
     font-size: 12px;
   }
+}
 
+/* Mobile phones - further refinements */
+@media (max-width: 600px) {
+  .header {
+    padding: 6px 10px;
+    height: auto;
+    min-height: 44px;
+  }
+
+  .meeting-title {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .header-left .logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .header-left .logo svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Even more compact shark grid */
+  .video-area {
+    padding: 6px;
+  }
+
+  .participant-strip {
+    gap: 4px;
+  }
+
+  .participant-video {
+    height: 60px;
+    border-width: 1px;
+  }
+
+  .participant-name {
+    font-size: 8px;
+  }
+
+  .participant-badge {
+    font-size: 6px;
+    padding: 1px 4px;
+  }
+
+  /* OUT overlay smaller on mobile */
+  .participant-video--out::after {
+    font-size: 14px;
+    padding: 4px 8px;
+    letter-spacing: 0.1em;
+  }
+
+  /* Chat messages area */
   .chat-messages {
     padding: 8px;
   }
 
   .message {
-    padding: 8px 10px;
+    padding: 6px 10px;
     font-size: 13px;
   }
 
+  .message-author {
+    font-size: 11px;
+  }
+
+  /* Input area - larger touch targets */
   .chat-input-area {
-    padding: 8px;
-    gap: 6px;
+    padding: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+
+  /* Response guidance above input */
+  .response-guidance {
+    width: 100%;
+    order: -1;
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-bottom: 0;
+    border-radius: 8px;
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.3);
   }
 
   .chat-input {
+    flex: 1;
+    min-width: 0;
     font-size: 16px; /* Prevent iOS zoom on focus */
-    padding: 10px 12px;
+    padding: 12px 14px;
+    height: 48px;
+    border-radius: 24px;
   }
 
   .record-btn,
   .send-btn {
-    width: 44px;
-    height: 44px;
-    min-width: 44px; /* Touch target minimum */
+    width: 48px;
+    height: 48px;
+    min-width: 48px; /* Touch target minimum */
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
-  /* Offer cards on mobile */
+  /* Offer cards on mobile - compact */
   .offer-card {
-    padding: 12px;
+    padding: 10px;
+    margin: 6px 0;
+  }
+
+  .offer-shark {
+    font-size: 12px;
+  }
+
+  .offer-amount,
+  .offer-equity {
+    font-size: 18px;
   }
 
   .offer-actions {
-    flex-wrap: wrap;
-    gap: 6px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px;
   }
 
   .offer-btn {
-    flex: 1 1 45%;
-    padding: 10px;
-    font-size: 12px;
-  }
-
-  /* Response guidance on mobile */
-  .response-guidance {
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 10px 8px;
+    font-size: 11px;
   }
 
   .guidance-close {
     padding: 4px 8px;
+    font-size: 16px;
   }
 }
 
 /* Very small phones */
 @media (max-width: 380px) {
-  .participant {
-    width: 70px;
+  .participant-strip {
+    gap: 3px;
   }
 
   .participant-video {
@@ -1589,11 +1666,24 @@ body {
   }
 
   .participant-name {
-    font-size: 8px;
+    font-size: 7px;
+  }
+
+  .participant-badge {
+    font-size: 5px;
+    padding: 1px 3px;
   }
 
   .chat-input {
-    padding: 8px 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+  }
+
+  .record-btn,
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -1672,32 +1762,70 @@ body {
   }
 }
 
-/* Mobile landscape mode */
+/* Mobile landscape mode - side by side layout */
 @media (max-width: 900px) and (orientation: landscape) {
   .main-wrapper {
     flex-direction: row;
   }
 
   .video-area {
-    flex: 0 0 35%;
-    max-width: 35%;
+    flex: 0 0 30%;
+    max-width: 30%;
+    padding: 6px;
   }
 
-  .participants {
-    flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-    max-height: 100%;
+  /* Show featured video in landscape for speaker focus */
+  .featured-video {
+    display: flex;
+    flex: 1;
+    min-height: 120px;
+  }
+
+  /* Horizontal strip in landscape */
+  .participant-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    overflow: visible;
   }
 
   .participant {
-    width: 100%;
+    width: calc(50% - 2px);
+    flex-shrink: 0;
+  }
+
+  .participant--you {
+    display: block;
+  }
+
+  .participant-video {
+    height: 50px;
+  }
+
+  /* Show controls in landscape */
+  .controls-bar {
+    display: flex;
+    padding: 6px 0;
   }
 
   .chat-panel {
     flex: 1;
     border-top: none;
     border-left: 1px solid var(--surface-4);
+  }
+
+  .chat-messages {
+    padding: 8px;
+  }
+}
+
+/* Confidence delta on mobile - smaller */
+@media (max-width: 600px) {
+  .confidence-delta {
+    font-size: 11px;
+    padding: 2px 6px;
+    top: 4px;
+    right: 4px;
   }
 }
 
