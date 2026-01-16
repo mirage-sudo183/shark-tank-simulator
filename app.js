@@ -940,6 +940,12 @@
     // Initialize TTS audio player
     initAudioPlayer();
 
+    // Initialize camera toggle button
+    initCameraToggle();
+
+    // Initialize response guidance
+    initResponseGuidance();
+
     // Initialize chat (enable input)
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
@@ -1255,6 +1261,12 @@
     // Initialize TTS audio player
     initAudioPlayer();
 
+    // Initialize camera toggle button
+    initCameraToggle();
+
+    // Initialize response guidance
+    initResponseGuidance();
+
     // Connect to SSE if session exists
     if (sessionId) {
       connectSSE();
@@ -1384,6 +1396,9 @@
 
         hideThinking(event.data.sharkName);
         sendSharkMessage(event.data.sharkName, event.data.text);
+
+        // Show response guidance on first shark message
+        showResponseGuidance();
 
         // Play TTS audio if available
         if (event.data.audio || event.data.duration) {
@@ -1874,6 +1889,10 @@
   }
 
   function sendUserMessage(text) {
+    // Hide response guidance when user sends a message
+    hasUserResponded = true;
+    hideResponseGuidance();
+
     const messagesContainer = document.getElementById('chatMessages');
     if (!messagesContainer) return;
 
@@ -1976,6 +1995,92 @@
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       mediaStream = null;
+    }
+  }
+
+  // ========================================
+  // Camera Toggle
+  // ========================================
+  let cameraEnabled = true;
+
+  function toggleCamera() {
+    const btn = document.getElementById('cameraToggleBtn');
+    const onIcon = btn?.querySelector('.camera-on-icon');
+    const offIcon = btn?.querySelector('.camera-off-icon');
+    const webcamMain = document.getElementById('userWebcamMain');
+    const webcamSmall = document.getElementById('userWebcamSmall');
+    const avatarContainer = document.getElementById('featuredAvatarContainer');
+    const avatarSmall = document.getElementById('userAvatarSmall');
+
+    if (cameraEnabled) {
+      // Turn off camera
+      if (mediaStream) {
+        mediaStream.getVideoTracks().forEach(track => track.enabled = false);
+      }
+      if (webcamMain) webcamMain.style.display = 'none';
+      if (webcamSmall) webcamSmall.style.display = 'none';
+      if (avatarContainer) avatarContainer.style.display = 'flex';
+      if (avatarSmall) avatarSmall.style.display = 'flex';
+      if (onIcon) onIcon.style.display = 'none';
+      if (offIcon) offIcon.style.display = 'block';
+      if (btn) {
+        btn.classList.add('camera-off');
+        btn.title = 'Turn on camera';
+      }
+      cameraEnabled = false;
+    } else {
+      // Turn on camera
+      if (mediaStream) {
+        mediaStream.getVideoTracks().forEach(track => track.enabled = true);
+      }
+      if (webcamMain) webcamMain.style.display = 'block';
+      if (webcamSmall) webcamSmall.style.display = 'block';
+      if (avatarContainer) avatarContainer.style.display = 'none';
+      if (avatarSmall) avatarSmall.style.display = 'none';
+      if (onIcon) onIcon.style.display = 'block';
+      if (offIcon) offIcon.style.display = 'none';
+      if (btn) {
+        btn.classList.remove('camera-off');
+        btn.title = 'Turn off camera';
+      }
+      cameraEnabled = true;
+    }
+  }
+
+  // Initialize camera toggle button
+  function initCameraToggle() {
+    const btn = document.getElementById('cameraToggleBtn');
+    if (btn) {
+      btn.addEventListener('click', toggleCamera);
+    }
+  }
+
+  // ========================================
+  // Response Guidance
+  // ========================================
+  let hasShownGuidance = false;
+  let hasUserResponded = false;
+
+  function showResponseGuidance() {
+    if (hasShownGuidance || hasUserResponded) return;
+    const guidance = document.getElementById('responseGuidance');
+    if (guidance) {
+      guidance.classList.add('visible');
+      hasShownGuidance = true;
+    }
+  }
+
+  function hideResponseGuidance() {
+    const guidance = document.getElementById('responseGuidance');
+    if (guidance) {
+      guidance.classList.remove('visible');
+    }
+  }
+
+  function initResponseGuidance() {
+    const closeBtn = document.getElementById('guidanceCloseBtn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', hideResponseGuidance);
     }
   }
 
