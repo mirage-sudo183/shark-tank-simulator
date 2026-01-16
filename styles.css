@@ -1418,6 +1418,11 @@ body {
   background: var(--shark-blue-mid);
 }
 
+/* Mobile User Preview - hidden on desktop */
+.mobile-user-preview {
+  display: none;
+}
+
 /* ========================================
    Responsive - Mobile First Design
    Optimized for sharks visibility + chat usability
@@ -1602,6 +1607,44 @@ body {
     border-radius: 8px;
     background: rgba(37, 99, 235, 0.1);
     border: 1px solid rgba(37, 99, 235, 0.3);
+  }
+
+  /* Mobile user preview - show yourself */
+  .mobile-user-preview {
+    display: block;
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--shark-blue-accent);
+    box-shadow: var(--glow-blue);
+    flex-shrink: 0;
+    background: var(--surface-2);
+  }
+
+  .mobile-user-webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+
+  .mobile-user-avatar {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, var(--shark-blue-accent) 0%, var(--shark-blue-dark) 100%);
+  }
+
+  /* Hide avatar when webcam is active */
+  .mobile-user-preview.has-webcam .mobile-user-avatar {
+    display: none;
   }
 
   .chat-input {

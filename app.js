@@ -2211,6 +2211,8 @@
     const webcamSmall = document.getElementById('userWebcamSmall');
     const avatarContainer = document.getElementById('featuredAvatarContainer');
     const avatarSmall = document.getElementById('userAvatarSmall');
+    const mobilePreview = document.getElementById('mobileUserPreview');
+    const mobileWebcam = document.getElementById('mobileUserWebcam');
 
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -2226,6 +2228,12 @@
       if (webcamSmall) {
         webcamSmall.srcObject = mediaStream;
         if (avatarSmall) avatarSmall.style.display = 'none';
+      }
+
+      // Mobile user preview
+      if (mobileWebcam) {
+        mobileWebcam.srcObject = mediaStream;
+        if (mobilePreview) mobilePreview.classList.add('has-webcam');
       }
 
     } catch (err) {
@@ -2254,6 +2262,8 @@
     const webcamSmall = document.getElementById('userWebcamSmall');
     const avatarContainer = document.getElementById('featuredAvatarContainer');
     const avatarSmall = document.getElementById('userAvatarSmall');
+    const mobilePreview = document.getElementById('mobileUserPreview');
+    const mobileWebcam = document.getElementById('mobileUserWebcam');
 
     if (cameraEnabled) {
       // Turn off camera
@@ -2262,8 +2272,10 @@
       }
       if (webcamMain) webcamMain.style.display = 'none';
       if (webcamSmall) webcamSmall.style.display = 'none';
+      if (mobileWebcam) mobileWebcam.style.display = 'none';
       if (avatarContainer) avatarContainer.style.display = 'flex';
       if (avatarSmall) avatarSmall.style.display = 'flex';
+      if (mobilePreview) mobilePreview.classList.remove('has-webcam');
       if (onIcon) onIcon.style.display = 'none';
       if (offIcon) offIcon.style.display = 'block';
       if (btn) {
@@ -2278,8 +2290,10 @@
       }
       if (webcamMain) webcamMain.style.display = 'block';
       if (webcamSmall) webcamSmall.style.display = 'block';
+      if (mobileWebcam) mobileWebcam.style.display = 'block';
       if (avatarContainer) avatarContainer.style.display = 'none';
       if (avatarSmall) avatarSmall.style.display = 'none';
+      if (mobilePreview) mobilePreview.classList.add('has-webcam');
       if (onIcon) onIcon.style.display = 'block';
       if (offIcon) offIcon.style.display = 'none';
       if (btn) {
