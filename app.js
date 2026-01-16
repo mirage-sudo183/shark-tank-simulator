@@ -1943,12 +1943,15 @@
   }
 
   function checkAllSharksOut() {
-    const allParticipants = document.querySelectorAll('[data-investor]');
+    // Use more specific selector - only participant divs, not confidence bars
+    const allParticipants = document.querySelectorAll('.participant[data-investor]');
     let allOut = true;
     let outCount = 0;
 
     allParticipants.forEach(p => {
       const video = p.querySelector('.participant-video');
+      if (!video) return; // Skip if no video element found
+
       if (video.classList.contains('participant-video--out')) {
         outCount++;
       } else {
@@ -1958,7 +1961,7 @@
 
     console.log('[checkAllSharksOut] Out count:', outCount, '/', allParticipants.length, 'allOut:', allOut);
 
-    if (allOut && allParticipants.length > 0) {
+    if (allOut && allParticipants.length > 0 && outCount === allParticipants.length) {
       // All sharks are out - show sad ending
       console.log('[checkAllSharksOut] All sharks are out! Showing sad ending.');
       showSadEnding();
