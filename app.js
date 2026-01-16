@@ -1943,27 +1943,35 @@
   }
 
   function checkAllSharksOut() {
-    // Use more specific selector - only participant divs, not confidence bars
+    // Use more specific selector - only participant divs with data-investor (sharks only)
     const allParticipants = document.querySelectorAll('.participant[data-investor]');
-    let allOut = true;
     let outCount = 0;
+    let totalSharks = allParticipants.length;
+
+    console.log('[checkAllSharksOut] Checking', totalSharks, 'shark participants');
 
     allParticipants.forEach(p => {
+      const sharkId = p.dataset.investor;
       const video = p.querySelector('.participant-video');
-      if (!video) return; // Skip if no video element found
 
-      if (video.classList.contains('participant-video--out')) {
+      if (!video) {
+        console.log('[checkAllSharksOut] No video element for', sharkId);
+        return;
+      }
+
+      const isOut = video.classList.contains('participant-video--out');
+      console.log('[checkAllSharksOut] Shark', sharkId, 'isOut:', isOut);
+
+      if (isOut) {
         outCount++;
-      } else {
-        allOut = false;
       }
     });
 
-    console.log('[checkAllSharksOut] Out count:', outCount, '/', allParticipants.length, 'allOut:', allOut);
+    console.log('[checkAllSharksOut] Result: Out count:', outCount, '/', totalSharks);
 
-    if (allOut && allParticipants.length > 0 && outCount === allParticipants.length) {
+    if (totalSharks > 0 && outCount === totalSharks) {
       // All sharks are out - show sad ending
-      console.log('[checkAllSharksOut] All sharks are out! Showing sad ending.');
+      console.log('[checkAllSharksOut] ALL SHARKS OUT! Triggering sad ending.');
       showSadEnding();
     }
   }
