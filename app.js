@@ -16,8 +16,7 @@
                        (!window.location.hostname.includes('localhost') && window.location.port === '');
 
   // Railway backend URL for production, local Flask server for development
-  // TODO: Replace with your actual Railway URL after deployment
-  const RAILWAY_BACKEND_URL = 'https://shark-tank-simulator-production.up.railway.app';
+  const RAILWAY_BACKEND_URL = 'https://shark-tank-simulator-production-bbd8.up.railway.app';
   const API_BASE = isProduction ? RAILWAY_BACKEND_URL : window.location.origin;
 
   const TOTAL_SESSION_TIME = 900; // 15 minutes total
