@@ -3879,14 +3879,17 @@
   }
 
   function startTimer() {
-    // Timer functionality disabled - game is now confidence-driven
-    // Game ends only when all sharks are out OR a deal is made
-    console.log('[Timer] Timer disabled - confidence-driven game mode');
+    // Timer for pitch phase countdown
+    console.log('[Timer] Starting pitch timer - 1 minute countdown');
+
+    // Update display immediately
+    updateTimerDisplay();
 
     // Only keep pitch timer for auto-ending pitch phase
     if (currentPhase === 'pitch') {
       timerInterval = setInterval(() => {
         pitchTimeRemaining--;
+        updateTimerDisplay(); // Update the visual display
         if (pitchTimeRemaining <= 0) {
           clearInterval(timerInterval);
           endPitchPhase();
