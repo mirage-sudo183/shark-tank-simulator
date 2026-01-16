@@ -3901,33 +3901,9 @@
   }
 
   function startTimer() {
-    // Clear any existing timer first
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      timerInterval = null;
-    }
-
-    // Timer for pitch phase countdown
-    console.log('[Timer] Starting timer - currentPhase:', currentPhase, 'pitchTimeRemaining:', pitchTimeRemaining);
-
-    // Update display immediately
-    updateTimerDisplay();
-
-    // Only run pitch timer during pitch phase
-    if (currentPhase === 'pitch') {
-      console.log('[Timer] Starting 1-minute pitch countdown');
-      timerInterval = setInterval(() => {
-        pitchTimeRemaining--;
-        updateTimerDisplay(); // Update the visual display
-        console.log('[Timer] Pitch time remaining:', pitchTimeRemaining);
-        if (pitchTimeRemaining <= 0) {
-          clearInterval(timerInterval);
-          timerInterval = null;
-          console.log('[Timer] Pitch time up - transitioning to Q&A');
-          endPitchPhase();
-        }
-      }, 1000);
-    }
+    // No automatic timer - pitch ends only when user clicks "End Pitch"
+    // The game is confidence-driven, not time-driven
+    console.log('[Timer] Timer disabled - user controls when pitch ends');
   }
 
   function stopTimer() {
