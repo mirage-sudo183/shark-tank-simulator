@@ -352,7 +352,6 @@
           <!-- Timer removed - game is now confidence-driven -->
         </div>
         <div class="header-right">
-          <button class="mobile-end-btn" id="mobileEndBtn" title="End Pitch">End</button>
           <div class="user-avatar">
             <span>Y</span>
           </div>
@@ -494,34 +493,12 @@
                 Offers
                 <span class="offers-badge" id="offersBadge" style="display: none;">0</span>
               </button>
-            </div>
-            <button class="chat-menu-btn" title="More options">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="1"/>
-                <circle cx="12" cy="5" r="1"/>
-                <circle cx="12" cy="19" r="1"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Chat Messages Tab -->
-          <div class="chat-messages" id="chatMessages">
-            <div class="message message--system">
-              <p class="message-text">The panel has begun. Good luck.</p>
+              <button class="chat-tab chat-tab--end" id="endPitchTabBtn">End Pitch</button>
             </div>
           </div>
 
-          <!-- Offers Tab -->
-          <div class="offers-panel" id="offersPanel" style="display: none;">
-            <div class="offers-empty" id="offersEmpty">
-              <p>No active offers yet.</p>
-              <p class="offers-hint">When sharks make offers, they'll appear here with a 60-second timer.</p>
-            </div>
-            <div class="offers-list" id="offersList"></div>
-          </div>
-
+          <!-- Input Area - At top for easy access -->
           <div class="chat-input-area">
-            <!-- First Response Guidance Tooltip (above input) -->
             <div class="response-guidance" id="responseGuidance">
               <span class="guidance-hint">💬 Type below or 🎤 hold mic to speak</span>
               <button class="guidance-close" id="guidanceCloseBtn">&times;</button>
@@ -547,6 +524,22 @@
           <div class="chat-transcript" id="chatTranscript" style="display: none;">
             <span class="transcript-label">You said:</span>
             <span class="transcript-live" id="liveTranscriptText"></span>
+          </div>
+
+          <!-- Chat Messages Tab -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="message message--system">
+              <p class="message-text">The panel has begun. Good luck.</p>
+            </div>
+          </div>
+
+          <!-- Offers Tab -->
+          <div class="offers-panel" id="offersPanel" style="display: none;">
+            <div class="offers-empty" id="offersEmpty">
+              <p>No active offers yet.</p>
+              <p class="offers-hint">When sharks make offers, they'll appear here with a 60-second timer.</p>
+            </div>
+            <div class="offers-list" id="offersList"></div>
           </div>
         </aside>
       </div>

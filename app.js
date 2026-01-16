@@ -2519,15 +2519,16 @@
   // End Pitch / Phase Management
   // ========================================
   function initEndPitch() {
+    // Original end button in controls bar
     const endBtn = document.getElementById('endPitchBtn');
     if (endBtn) {
       endBtn.addEventListener('click', endPitchPhase);
     }
 
-    // Mobile end button (in header)
-    const mobileEndBtn = document.getElementById('mobileEndBtn');
-    if (mobileEndBtn) {
-      mobileEndBtn.addEventListener('click', endPitchPhase);
+    // End button in chat tabs (next to Offers)
+    const endPitchTabBtn = document.getElementById('endPitchTabBtn');
+    if (endPitchTabBtn) {
+      endPitchTabBtn.addEventListener('click', endPitchPhase);
     }
   }
 
@@ -2547,11 +2548,11 @@
         endBtn.classList.add('leave-btn--final');
       }
 
-      // Update mobile end button too
-      const mobileEndBtn = document.getElementById('mobileEndBtn');
-      if (mobileEndBtn) {
-        mobileEndBtn.textContent = 'Leave';
-        mobileEndBtn.classList.add('leave-btn--final');
+      // Update end button in chat tabs
+      const endPitchTabBtn = document.getElementById('endPitchTabBtn');
+      if (endPitchTabBtn) {
+        endPitchTabBtn.textContent = 'Leave Panel';
+        endPitchTabBtn.classList.add('leave-mode');
       }
 
       // Update caption
