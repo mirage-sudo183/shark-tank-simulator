@@ -118,7 +118,13 @@ class SessionManager:
                     'dialogue_history': [],  # Track what they've said
                     'offers_made': [],  # Track offers from this shark
                     'last_action_type': None,  # ASK, EXPRESS, OFFER, REJECT, etc.
-                    'question_count': 0
+                    'question_count': 0,
+                    # Confidence flag system
+                    'flagged_for_offer': False,  # True when confidence >= 70
+                    'flagged_for_out': False,  # True when confidence < 25
+                    'has_made_offer': False,  # Track if shark has made any offer
+                    'post_offer_sensitivity': 1.0,  # Multiplier for confidence changes (0.5 after offer)
+                    'went_out_at': None  # Timestamp when went out (for return logic)
                 }
             return True
 

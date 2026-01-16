@@ -314,6 +314,18 @@ NEGATIVE_MODIFIERS = {
 }
 
 # =============================================================================
+# Confidence Thresholds for Flag System
+# =============================================================================
+
+CONFIDENCE_THRESHOLDS = {
+    'offer': 70,      # Shark will make offer when confidence >= this
+    'out': 25,        # Shark will go out when confidence < this
+    'recovery': 35,   # Clear "flagged for out" if confidence recovers above this
+    'return': 50      # Shark who went OUT can return if confidence >= this
+}
+POST_OFFER_SENSITIVITY = 0.5  # Confidence changes are multiplied by this after making offer
+
+# =============================================================================
 # Out Reasons by Shark
 # =============================================================================
 
@@ -891,57 +903,212 @@ class SharkManager:
 
         return max(0, min(100, current_confidence + delta))
 
-    def should_go_out(self, shark_id, confidence, phase, context):
-        """Determine if shark should declare 'I'm out'."""
-        # Never go out during pitch phase
+    def should_go_out(self, shark_id, confidence, phase, context, shark_state=None):
+        """
+        Determine if shark should go out on their speaking turn.
+        Now checks the flagged_for_out flag instead of immediate confidence check.
+        """
         if phase == 'pitch':
             return False
 
-        # Sharks should ask at least 2-3 questions before going out
+        # If shark_state provided, check flag
+        if shark_state:
+            if not shark_state.get('flagged_for_out', False):
+                return False
+
+            # Verify confidence is still below recovery threshold
+            if confidence >= CONFIDENCE_THRESHOLDS['recovery']:
+                return False
+
+        else:
+            # Fallback to old logic if no state provided
+            if confidence >= CONFIDENCE_THRESHOLDS['out']:
+                return False
+
+        # Must have asked at least 1 question before going out
         question_count = context.get('questionCount', 0)
-        if question_count < 2:
-            return False  # Always ask questions first!
+        if question_count < 1:
+            return False
 
-        # Very low confidence after asking questions
-        if confidence < 15 and question_count >= 2:
-            return True
-
-        # Low confidence after many interactions
-        if question_count >= 4 and confidence < 30:
-            return True
-
-        # Shark-specific triggers (only after asking questions)
-        if question_count >= 2:
-            if shark_id == 'victor' and context.get('rejectedRoyalty'):
-                return random.random() < 0.6  # 60% chance to leave
-
-            if shark_id == 'marcus' and context.get('mentionedRoyalty'):
-                return random.random() < 0.4  # 40% chance if royalty mentioned
-
-        return False
+        return True
 
     def get_out_reason(self, shark_id):
         """Get a contextual reason for going out."""
         reasons = OUT_REASONS.get(shark_id, ["I'm out."])
         return random.choice(reasons)
 
-    def should_make_offer(self, shark_id, confidence, phase, context):
-        """Determine if shark should make an offer."""
+    def should_make_offer(self, shark_id, confidence, phase, context, shark_state=None):
+        """
+        Determine if shark should make an offer on their speaking turn.
+        Now checks the flagged_for_offer flag.
+        """
         if phase not in ['qa', 'offers']:
             return False
 
-        if confidence < 60:
+        # If shark_state provided, check flag
+        if shark_state:
+            if not shark_state.get('flagged_for_offer', False):
+                return False
+
+            # Verify confidence is still above threshold
+            if confidence < CONFIDENCE_THRESHOLDS['offer']:
+                return False
+        else:
+            # Fallback to old logic if no state provided
+            if confidence < CONFIDENCE_THRESHOLDS['offer']:
+                return False
+
+        return True
+
+    # =========================================================================
+    # Confidence Flag System - New Methods
+    # =========================================================================
+
+    def evaluate_confidence_flags(self, shark_id, confidence, shark_state):
+        """
+        Evaluate confidence and set appropriate flags.
+        Does NOT immediately trigger offer/out - just sets flags.
+        Returns updated flag states.
+        """
+        current_has_offered = shark_state.get('has_made_offer', False)
+        current_flagged_for_out = shark_state.get('flagged_for_out', False)
+
+        flags = {
+            'flagged_for_offer': False,
+            'flagged_for_out': current_flagged_for_out  # Preserve existing out flag
+        }
+
+        # Flag for offer if confidence is high enough
+        # Only flag if hasn't offered yet OR confidence is very high (re-offer opportunity)
+        if confidence >= CONFIDENCE_THRESHOLDS['offer']:
+            if not current_has_offered or confidence >= 85:
+                flags['flagged_for_offer'] = True
+
+        # Flag for out if confidence is low
+        if confidence < CONFIDENCE_THRESHOLDS['out']:
+            flags['flagged_for_out'] = True
+        # Clear out flag if confidence recovered
+        elif confidence >= CONFIDENCE_THRESHOLDS['recovery']:
+            flags['flagged_for_out'] = False
+
+        return flags
+
+    def calculate_confidence_delta_from_message(self, shark_id, message, shark_state):
+        """
+        Calculate confidence change based on user's message content.
+        This is called for EVERY shark after user message.
+        """
+        text = message.lower()
+        delta = 0
+
+        # Positive signals
+        if 'patent' in text or 'patented' in text:
+            delta += POSITIVE_MODIFIERS['patents'].get(shark_id, 10) // 3
+
+        if any(word in text for word in ['revenue', 'sales', 'profit', 'making money']):
+            delta += POSITIVE_MODIFIERS['revenue'].get(shark_id, 10) // 3
+            # Extra for numbers mentioned
+            if any(word in text for word in ['million', 'thousand', '100k', '500k', '1m']):
+                delta += 5
+
+        if any(word in text for word in ['users', 'customers', 'subscribers', 'downloads']):
+            delta += POSITIVE_MODIFIERS['users'].get(shark_id, 10) // 3
+
+        if any(word in text for word in ['growing', 'growth', 'doubled', 'tripled', 'increasing']):
+            delta += POSITIVE_MODIFIERS['growth'].get(shark_id, 10) // 3
+
+        if any(word in text for word in ['recurring', 'subscription', 'saas', 'mrr', 'arr']):
+            delta += POSITIVE_MODIFIERS['recurring'].get(shark_id, 10) // 3
+
+        # Negative signals
+        if any(phrase in text for phrase in ['no revenue', "haven't sold", 'pre-revenue', 'no sales', "don't have sales"]):
+            delta += NEGATIVE_MODIFIERS['no_revenue'].get(shark_id, -10) // 3
+
+        if any(phrase in text for phrase in ['no patent', 'not patented', 'no protection', "don't have a patent"]):
+            delta += NEGATIVE_MODIFIERS['no_protection'].get(shark_id, -10) // 3
+
+        if any(phrase in text for phrase in ['many competitors', 'crowded market', 'competitive space', 'lots of competition']):
+            delta += NEGATIVE_MODIFIERS['crowded_market'].get(shark_id, -10) // 3
+
+        # Evasive or weak answers
+        if any(phrase in text for phrase in ["don't know", "not sure", "haven't figured", "working on that", "i think", "maybe"]):
+            delta -= 5
+
+        # Strong answers
+        if any(phrase in text for phrase in ['absolutely', 'definitely', 'proven', 'validated', 'confirmed']):
+            delta += 3
+
+        return delta
+
+    def calculate_all_sharks_confidence_update(self, session_sharks, user_message):
+        """
+        Update confidence for ALL sharks based on user message.
+        Returns dict of {shark_id: {new_confidence, delta, flags, should_return}}.
+        """
+        results = {}
+
+        for shark_id, shark_data in session_sharks.items():
+            current_status = shark_data.get('status', 'live')
+            current_confidence = shark_data.get('confidence', 50)
+            sensitivity = shark_data.get('post_offer_sensitivity', 1.0)
+
+            # Calculate delta from message analysis
+            raw_delta = self.calculate_confidence_delta_from_message(
+                shark_id, user_message, shark_data
+            )
+
+            # Apply sensitivity modifier
+            adjusted_delta = int(raw_delta * sensitivity)
+
+            # Calculate new confidence
+            new_confidence = max(0, min(100, current_confidence + adjusted_delta))
+
+            # Check if OUT shark can return
+            should_return = False
+            if current_status == 'out':
+                should_return = self.check_shark_return(shark_id, new_confidence, shark_data)
+
+            # Evaluate flags (only for live sharks or returning sharks)
+            if current_status == 'live' or should_return:
+                flags = self.evaluate_confidence_flags(shark_id, new_confidence, shark_data)
+            else:
+                flags = {'flagged_for_offer': False, 'flagged_for_out': False}
+
+            results[shark_id] = {
+                'new_confidence': new_confidence,
+                'delta': adjusted_delta,
+                'raw_delta': raw_delta,
+                'flags': flags,
+                'should_return': should_return
+            }
+
+        return results
+
+    def check_shark_return(self, shark_id, confidence, shark_state):
+        """
+        Check if a shark who went OUT can return to the deal.
+        Returns True if shark should come back.
+        """
+        # Only check if shark is actually out
+        if shark_state.get('status') != 'out':
             return False
 
-        # Higher confidence = higher chance
-        if confidence > 85:
-            return random.random() < 0.8
-        if confidence > 75:
-            return random.random() < 0.5
-        if confidence > 65:
-            return random.random() < 0.3
+        # Return if confidence has risen above return threshold
+        if confidence >= CONFIDENCE_THRESHOLDS['return']:
+            return True
 
-        return random.random() < 0.15
+        return False
+
+    def get_return_message(self, shark_id):
+        """Get a message for when a shark returns to the deal."""
+        return_messages = {
+            'marcus': "Hold on, I heard something that changed my mind. I'm back in.",
+            'victor': "Wait a minute. Those numbers just got interesting. I'm listening again.",
+            'elena': "You know what? I want to hear more. I'm back.",
+            'richard': "That's the kind of thing I love to hear. Count me back in.",
+            'daniel': "I'm sorry I stepped away. Let me reconsider this."
+        }
+        return return_messages.get(shark_id, "I'm back in the deal.")
 
     def generate_offer_terms(self, shark_id, pitch_data, confidence):
         """Generate offer terms based on shark personality."""

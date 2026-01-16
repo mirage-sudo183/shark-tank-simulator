@@ -1604,9 +1604,105 @@
         showSessionComplete(event.data);
         break;
 
+      // NEW: Confidence flag system events
+      case 'confidence_update':
+        handleConfidenceUpdate(event.data);
+        break;
+
+      case 'shark_returned':
+        handleSharkReturned(event.data);
+        break;
+
       default:
         console.log('Unknown SSE event type:', event.type);
     }
+  }
+
+  // ========================================
+  // Confidence Flag System - UI Handlers
+  // ========================================
+  function handleConfidenceUpdate(data) {
+    const { sharkId, sharkName, confidence, delta, flaggedForOffer, flaggedForOut } = data;
+
+    // Update local state
+    if (sharkStates[sharkId]) {
+      sharkStates[sharkId].confidence = confidence;
+      sharkStates[sharkId].flaggedForOffer = flaggedForOffer;
+      sharkStates[sharkId].flaggedForOut = flaggedForOut;
+    }
+
+    // Show visual confidence change indicator if significant
+    if (Math.abs(delta) >= 3) {
+      showConfidenceDelta(sharkId, delta);
+    }
+
+    console.log(`[Confidence] ${sharkName}: ${confidence} (${delta >= 0 ? '+' : ''}${delta})`);
+  }
+
+  function showConfidenceDelta(sharkId, delta) {
+    const participant = document.querySelector(`[data-investor="${sharkId}"]`);
+    if (!participant) return;
+
+    // Create floating indicator
+    const indicator = document.createElement('div');
+    indicator.className = `confidence-delta ${delta > 0 ? 'positive' : 'negative'}`;
+    indicator.textContent = `${delta > 0 ? '+' : ''}${delta}`;
+
+    // Position it over the participant
+    participant.style.position = 'relative';
+    participant.appendChild(indicator);
+
+    // Animate and remove
+    setTimeout(() => {
+      indicator.classList.add('fade-out');
+      setTimeout(() => indicator.remove(), 300);
+    }, 1500);
+  }
+
+  function handleSharkReturned(data) {
+    const { sharkId, sharkName, message, confidence } = data;
+
+    console.log(`[Shark Returned] ${sharkName} is back in the deal!`);
+
+    // Reset shark UI from "out" to "live"
+    setSharkReturned(sharkId);
+
+    // Update local state
+    if (sharkStates[sharkId]) {
+      sharkStates[sharkId].status = 'live';
+      sharkStates[sharkId].confidence = confidence;
+    }
+
+    // Show message in chat
+    sendSharkMessage(sharkName, message);
+
+    // Show notification
+    sendSystemMessage(`${sharkName} is back in the deal!`);
+  }
+
+  function setSharkReturned(sharkId) {
+    const participant = document.querySelector(`[data-investor="${sharkId}"]`);
+    if (!participant) return;
+
+    // Reset DOM state attribute
+    participant.dataset.state = 'live';
+
+    // Remove "out" visual classes
+    const video = participant.querySelector('.participant-video');
+    video.classList.remove('participant-video--out');
+    participant.classList.remove('participant--out');
+
+    // Reset badge to "LIVE"
+    const badge = participant.querySelector('.participant-badge');
+    if (badge) {
+      badge.classList.remove('badge--out', 'badge--interested');
+      badge.classList.add('badge--live');
+      badge.textContent = 'LIVE';
+    }
+
+    // Add a brief highlight effect
+    participant.classList.add('shark-returned');
+    setTimeout(() => participant.classList.remove('shark-returned'), 2000);
   }
 
   // ========================================
@@ -3437,30 +3533,20 @@
   }
 
   function startTimer() {
-    updateTimerDisplay();
+    // Timer functionality disabled - game is now confidence-driven
+    // Game ends only when all sharks are out OR a deal is made
+    console.log('[Timer] Timer disabled - confidence-driven game mode');
 
-    timerInterval = setInterval(() => {
-      remainingSeconds--;
-
-      // During pitch, also count down pitch time
-      if (currentPhase === 'pitch') {
+    // Only keep pitch timer for auto-ending pitch phase
+    if (currentPhase === 'pitch') {
+      timerInterval = setInterval(() => {
         pitchTimeRemaining--;
-
-        // Auto-end pitch if pitch time runs out
         if (pitchTimeRemaining <= 0) {
+          clearInterval(timerInterval);
           endPitchPhase();
-          return;
         }
-      }
-
-      updateTimerDisplay();
-
-      if (remainingSeconds <= 0) {
-        clearInterval(timerInterval);
-        sendSystemMessage('Time is up! The session has ended.');
-        endSession();
-      }
-    }, 1000);
+      }, 1000);
+    }
   }
 
   function stopTimer() {

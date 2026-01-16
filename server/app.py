@@ -726,12 +726,58 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
     # Get current deal mode status
     deal_mode_status = session_manager.get_deal_mode_status(session_id)
 
-    # Pick ONE shark to respond - rotate through sharks who haven't spoken recently
+    # =========================================================================
+    # NEW: Update ALL sharks' confidence based on user message
+    # =========================================================================
+    all_sharks = session_manager.get_all_shark_states(session_id)
+    confidence_updates = shark_manager.calculate_all_sharks_confidence_update(all_sharks, user_message)
+
+    # Apply updates and send events for all sharks
+    for shark_id, update in confidence_updates.items():
+        # Update shark state with new confidence and flags
+        session_manager.update_shark_state(session_id, shark_id, {
+            'confidence': update['new_confidence'],
+            'flagged_for_offer': update['flags']['flagged_for_offer'],
+            'flagged_for_out': update['flags']['flagged_for_out']
+        })
+
+        # Send confidence update event to frontend
+        send_sse_event(session_id, 'confidence_update', {
+            'sharkId': shark_id,
+            'sharkName': shark_manager.get_shark_name(shark_id),
+            'confidence': update['new_confidence'],
+            'delta': update['delta'],
+            'flaggedForOffer': update['flags']['flagged_for_offer'],
+            'flaggedForOut': update['flags']['flagged_for_out']
+        })
+
+        # Handle shark return (if OUT shark's confidence rose above return threshold)
+        if update['should_return']:
+            # Reset shark to live status
+            session_manager.update_shark_state(session_id, shark_id, {
+                'status': 'live',
+                'went_out_at': None,
+                'flagged_for_out': False
+            })
+
+            # Send shark returned event
+            return_message = shark_manager.get_return_message(shark_id)
+            send_sse_event(session_id, 'shark_returned', {
+                'sharkId': shark_id,
+                'sharkName': shark_manager.get_shark_name(shark_id),
+                'message': return_message,
+                'confidence': update['new_confidence']
+            })
+
+    # Refresh shark states after updates
+    import random
+
+    # Pick ONE shark to respond - rotate through sharks who are live
     responding_sharks = []
     for shark_id in SHARK_IDS:
         state = session_manager.get_shark_state(session_id, shark_id)
         if state.get('status') != 'out':
-            responding_sharks.append((shark_id, state.get('confidence', 50)))
+            responding_sharks.append((shark_id, state.get('confidence', 50), state))
 
     if not responding_sharks:
         return
@@ -744,25 +790,24 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
             break
 
     # Filter out last speaker, or pick randomly if all have spoken
-    import random
-    candidates = [(s, c) for s, c in responding_sharks if s != last_speaker]
+    candidates = [(s, c, st) for s, c, st in responding_sharks if s != last_speaker]
     if not candidates:
         candidates = responding_sharks
 
     # If a shark had proofs satisfied by this message, prioritize them
-    # This ensures the shark who was asking for proof gets to respond to the answer
     shark_with_satisfied_proof = None
-    for shark_id, proofs in proofs_satisfied.items():
-        if proofs and any(s[0] == shark_id for s in candidates):
-            shark_with_satisfied_proof = shark_id
+    for sid, proofs in proofs_satisfied.items():
+        if proofs and any(s[0] == sid for s in candidates):
+            shark_with_satisfied_proof = sid
             break
 
     if shark_with_satisfied_proof:
         shark_id = shark_with_satisfied_proof
-        confidence = next(c for s, c in candidates if s == shark_id)
+        confidence = next(c for s, c, st in candidates if s == shark_id)
+        shark_state = next(st for s, c, st in candidates if s == shark_id)
     else:
         # Pick one shark (weighted by confidence)
-        shark_id, confidence = random.choice(candidates)
+        shark_id, confidence, shark_state = random.choice(candidates)
 
     # Get belief state for this shark
     belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
@@ -786,19 +831,40 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
             'is_bidding_war': deal_mode_status.get('is_bidding_war', False) if deal_mode_status else False
         }
 
-        # Determine if shark should make an offer based on confidence and belief state
+        # Get current phase and context for decision making
+        phase = session.get('phase', 'qa')
+        decision_context = {'questionCount': shark_state.get('question_count', 0)}
+
+        # =========================================================================
+        # FLAG-BASED DECISIONS: Use flags to determine offer/out behavior
+        # =========================================================================
+
+        # Check if shark should go out (flag-based)
+        should_force_out = shark_manager.should_go_out(
+            shark_id, confidence, phase, decision_context, shark_state
+        )
+
+        # Check if shark should make an offer (flag-based)
         should_offer = False
         offer = None
 
-        if confidence >= 65 and belief_state:
-            # High confidence - might make an offer
-            can_offer = belief_state.proof_tracker.can_make_unconditional_offer() if hasattr(belief_state, 'proof_tracker') else True
-            if can_offer or confidence >= 80:
-                should_offer = True
+        if not should_force_out:
+            # Only consider offers if not going out
+            should_offer = shark_manager.should_make_offer(
+                shark_id, confidence, phase, decision_context, shark_state
+            )
+
+            if should_offer and belief_state:
                 # Generate offer terms FIRST
                 offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
 
-        if should_offer and offer:
+        if should_force_out:
+            # Shark is flagged to go out - generate a going out response
+            out_reason = shark_manager.get_out_reason(shark_id)
+            response = out_reason
+            # Force the action type to be a rejection
+            forced_rejection = True
+        elif should_offer and offer:
             # Generate dialogue with the EXACT offer terms
             response = ai_client.generate_offer_dialogue(
                 shark_id=shark_id,
@@ -807,6 +873,7 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
                 pitch_data=pitch_data,
                 context=context
             )
+            forced_rejection = False
         else:
             # Generate regular response (question, comment, etc.)
             response = ai_client.generate_shark_response(
@@ -820,6 +887,7 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
                 belief_state=belief_state.to_dict() if belief_state else None,
                 deal_context=enhanced_context
             )
+            forced_rejection = False
 
         if response:
             # Parse structured response to extract action type and update belief state
@@ -849,8 +917,8 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
             # Record action type
             session_manager.record_shark_action(session_id, shark_id, action_type)
 
-            # Check if shark is going out
-            is_going_out = parsed['is_rejection']
+            # Check if shark is going out (either from flag-based forced rejection or AI response)
+            is_going_out = forced_rejection or parsed['is_rejection']
 
             # If we didn't pre-generate an offer but the AI decided to make one anyway
             if not offer and not is_going_out and parsed['is_offer']:
@@ -878,6 +946,14 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
                 if belief_state:
                     belief_state.record_offer_made(offer)
                     session_manager.update_shark_belief_state(session_id, shark_id, belief_state)
+
+                # NEW: Set post-offer sensitivity and clear offer flag
+                from sharks import POST_OFFER_SENSITIVITY
+                session_manager.update_shark_state(session_id, shark_id, {
+                    'has_made_offer': True,
+                    'post_offer_sensitivity': POST_OFFER_SENSITIVITY,
+                    'flagged_for_offer': False  # Clear the flag after making offer
+                })
 
             # Speaking
             send_sse_event(session_id, 'shark_speaking', {
@@ -920,7 +996,12 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
 
             # If shark said "I'm out", mark them as out
             if is_going_out:
-                session_manager.update_shark_state(session_id, shark_id, {'status': 'out'})
+                import time as time_module
+                session_manager.update_shark_state(session_id, shark_id, {
+                    'status': 'out',
+                    'went_out_at': int(time_module.time() * 1000),
+                    'flagged_for_out': False  # Clear the flag
+                })
                 send_sse_event(session_id, 'shark_out', {
                     'sharkId': shark_id,
                     'sharkName': shark_manager.get_shark_name(shark_id),
