@@ -713,6 +713,13 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: center 20%;
+  background: #1a1a2e; /* Dark background to hide any white edges */
+}
+
+/* Fix for Robert Herjavec image white background */
+.participant[data-investor="daniel"] .participant-img {
+  object-position: center center;
+  background: #1a1a2e;
 }
 
 .participant-webcam {
@@ -3748,114 +3755,105 @@ a,
 }
 
 /* ========================================
-   Response Guidance Tooltip
+   Response Guidance Tooltip (Minimal)
    ======================================== */
 .response-guidance {
   display: none;
   position: absolute;
-  bottom: 70px;
-  left: 12px;
-  right: 12px;
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 41, 59, 0.95);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 100;
-  animation: slideUp 0.3s ease-out;
+  animation: fadeInUp 0.3s ease-out;
+  white-space: nowrap;
 }
 
 .response-guidance.visible {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-@keyframes slideUp {
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(-50%) translateY(5px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
 }
 
 .guidance-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  display: none;
 }
 
-.guidance-title {
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
+.guidance-options {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.guidance-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+}
+
+.guidance-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60a5fa;
+}
+
+.guidance-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.guidance-text {
+  display: flex;
+  align-items: center;
+}
+
+.guidance-text strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.guidance-text span {
+  display: none;
+}
+
+.guidance-divider {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
 }
 
 .guidance-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 16px;
   cursor: pointer;
-  padding: 0;
+  padding: 0 0 0 8px;
   line-height: 1;
 }
 
 .guidance-close:hover {
   color: white;
-}
-
-.guidance-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.guidance-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.guidance-icon {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(59, 130, 246, 0.2);
-  border-radius: 8px;
-  color: #60a5fa;
-}
-
-.guidance-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.guidance-text strong {
-  color: white;
-  font-size: 13px;
-}
-
-.guidance-text span {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-}
-
-.guidance-divider {
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 /* ========================================
