@@ -89,11 +89,11 @@
 
   // Shark name mapping for demo
   const SHARK_NAMES = {
-    'marcus_kellan': 'Marcus Kellan',
-    'elena_brooks': 'Elena Brooks',
-    'victor_slate': 'Victor Slate',
-    'daniel_frost': 'Daniel Frost',
-    'richard_hale': 'Richard Hale'
+    'mark_cuban': 'Mark Cuban',
+    'lori_greiner': 'Lori Greiner',
+    'kevin_oleary': 'Kevin O\'Leary',
+    'robert_herjavec': 'Robert Herjavec',
+    'richard_branson': 'Richard Branson'
   };
 
   // ========================================

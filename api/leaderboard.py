@@ -106,7 +106,7 @@ def get_mock_leaderboard():
                 'result': 'deal',
                 'dealAmount': 2000000,
                 'dealEquity': 5,
-                'shark': 'Richard Hale'
+                'shark': 'Richard Branson'
             },
             'verification': {
                 'type': 'verified',
@@ -132,7 +132,7 @@ def get_mock_leaderboard():
                 'result': 'deal',
                 'dealAmount': 1500000,
                 'dealEquity': 8,
-                'shark': 'Elena Brooks'
+                'shark': 'Lori Greiner'
             },
             'verification': {
                 'type': 'verified',

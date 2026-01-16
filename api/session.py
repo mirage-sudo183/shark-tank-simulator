@@ -8,13 +8,13 @@ import uuid
 from http.server import BaseHTTPRequestHandler
 
 # Shark configuration (matches Flask server and frontend)
-SHARK_IDS = ['marcus_kellan', 'victor_slate', 'elena_brooks', 'richard_hale', 'daniel_frost']
+SHARK_IDS = ['mark_cuban', 'kevin_oleary', 'lori_greiner', 'richard_branson', 'robert_herjavec']
 SHARK_NAMES = {
-    'marcus_kellan': 'Marcus Kellan',
-    'victor_slate': 'Victor Slate',
-    'elena_brooks': 'Elena Brooks',
-    'richard_hale': 'Richard Hale',
-    'daniel_frost': 'Daniel Frost'
+    'mark_cuban': 'Mark Cuban',
+    'kevin_oleary': 'Kevin O\'Leary',
+    'lori_greiner': 'Lori Greiner',
+    'richard_branson': 'Richard Branson',
+    'robert_herjavec': 'Robert Herjavec'
 }
 
 # Initial confidence based on proof type

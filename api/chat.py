@@ -15,32 +15,32 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 # Shark IDs (matches session.py and Flask server)
-SHARK_IDS = ['marcus_kellan', 'victor_slate', 'elena_brooks', 'richard_hale', 'daniel_frost']
+SHARK_IDS = ['mark_cuban', 'kevin_oleary', 'lori_greiner', 'richard_branson', 'robert_herjavec']
 
 # Shark personas
 SHARK_PERSONAS = {
-    'marcus_kellan': {
-        'name': 'Marcus Kellan',
+    'mark_cuban': {
+        'name': 'Mark Cuban',
         'style': 'Tech billionaire. Bold, direct, hates royalty deals. Asks about CAC, LTV, and scalability.',
         'catchphrase': "What's your customer acquisition cost?"
     },
-    'victor_slate': {
-        'name': 'Victor Slate',
+    'kevin_oleary': {
+        'name': 'Kevin O\'Leary',
         'style': 'Mr. Wonderful. Cold, calculating, loves royalty deals. All about the numbers and returns.',
         'catchphrase': "Here's the thing..."
     },
-    'elena_brooks': {
-        'name': 'Elena Brooks',
-        'style': 'Queen of Retail. Warm, product-focused, wants to see demos and patents.',
+    'lori_greiner': {
+        'name': 'Lori Greiner',
+        'style': 'Queen of QVC. Warm, product-focused, wants to see demos and patents.',
         'catchphrase': "Is this patented?"
     },
-    'richard_hale': {
-        'name': 'Richard Hale',
+    'richard_branson': {
+        'name': 'Richard Branson',
         'style': 'Adventurous billionaire. Focuses on brand, experience, and customer journey.',
         'catchphrase': "What's the customer experience like?"
     },
-    'daniel_frost': {
-        'name': 'Daniel Frost',
+    'robert_herjavec': {
+        'name': 'Robert Herjavec',
         'style': 'Tech entrepreneur. Empathetic, encouraging, connects emotionally with founders.',
         'catchphrase': "Tell me your story."
     }
@@ -51,7 +51,7 @@ def generate_shark_response(shark_id, pitch_data, user_message=None, context=Non
     """Generate a shark response using Claude API."""
 
     if shark_id not in SHARK_PERSONAS:
-        shark_id = 'marcus_kellan'  # Default fallback
+        shark_id = 'mark_cuban'  # Default fallback
 
     if not HAS_ANTHROPIC:
         return f"Interesting pitch! Tell me more about your business model."

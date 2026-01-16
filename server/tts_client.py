@@ -11,29 +11,29 @@ import base64
 # Custom Eleven Labs voices for each shark personality
 SHARK_VOICES = {
     'marcus': {
-        'voiceId': '0j3d9hmWUPu58jCTkS2a',  # Custom Marc voice
-        'name': 'Marcus Kellan',
-        'description': 'Deep, confident male voice (Mark Cuban style)'
+        'voiceId': 'gihxsbdhXQxpFmrPiUoE',  # Mark Cuban voice
+        'name': 'Mark Cuban',
+        'description': 'Deep, confident male voice'
     },
     'victor': {
-        'voiceId': 'rWGG0VXK5AV5uUCVhkzq',  # Custom Kevin voice
-        'name': 'Victor Slate',
-        'description': 'Cold, calculating male voice (Kevin O\'Leary style)'
+        'voiceId': 'HJF3C4vM6Zgrj0FJwEmC',  # Kevin O'Leary voice
+        'name': 'Kevin O\'Leary',
+        'description': 'Cold, calculating male voice'
     },
     'elena': {
-        'voiceId': 'jHxfbXCsWA2s73SylbEE',  # Custom Elena voice
-        'name': 'Elena Brooks',
-        'description': 'Warm, enthusiastic female voice (Lori Greiner style)'
+        'voiceId': '94R0dMkh2BUbsdlCrqpt',  # Lori Greiner voice
+        'name': 'Lori Greiner',
+        'description': 'Warm, enthusiastic female voice'
     },
     'richard': {
-        'voiceId': 'dhM7j5QUr0mRBkfdrTSq',  # Custom Richard voice
-        'name': 'Richard Hale',
-        'description': 'Warm, storytelling male voice (Richard Branson style)'
+        'voiceId': 'UcY0K19YywEjaPpbMHXm',  # Richard Branson voice
+        'name': 'Richard Branson',
+        'description': 'Warm, storytelling male voice'
     },
     'daniel': {
-        'voiceId': 'xGWtbEed7UIlZxIkSrUI',  # Custom Daniel voice
-        'name': 'Daniel Frost',
-        'description': 'Friendly, encouraging male voice (Robert Herjavec style)'
+        'voiceId': 'sXN3NqfWqUXFNaCKTM0N',  # Robert Herjavec voice
+        'name': 'Robert Herjavec',
+        'description': 'Friendly, encouraging male voice'
     }
 }
 
