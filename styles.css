@@ -716,10 +716,16 @@ body {
   background: #1a1a2e; /* Dark background to hide any white edges */
 }
 
-/* Fix for Robert Herjavec image white background */
+/* Fix for Robert Herjavec image - crop to hide white chair */
 .participant[data-investor="daniel"] .participant-img {
-  object-position: center center;
+  object-fit: cover;
+  object-position: center 15%; /* Focus on face, crop bottom chair */
+  transform: scale(1.2); /* Zoom in to hide chair edges */
   background: #1a1a2e;
+}
+
+.participant[data-investor="daniel"] .participant-video {
+  overflow: hidden; /* Ensure zoom doesn't overflow */
 }
 
 .participant-webcam {
@@ -1392,50 +1398,306 @@ body {
 }
 
 /* ========================================
-   Responsive
+   Responsive - Mobile First Design
    ======================================== */
+
+/* Tablet and below */
 @media (max-width: 900px) {
-  .chat-panel {
-    display: none;
+  .main-wrapper {
+    flex-direction: column;
   }
-  
+
+  .video-area {
+    flex: 0 0 auto;
+    min-height: auto;
+    padding: 8px;
+  }
+
+  .participants {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .participant {
-    width: 120px;
+    width: 100px;
+    flex-shrink: 0;
   }
-  
+
   .participant-video {
-    height: 75px;
+    height: 70px;
+  }
+
+  .participant-name {
+    font-size: 10px;
+  }
+
+  .participant-badge {
+    font-size: 8px;
+    padding: 2px 6px;
+  }
+
+  .chat-panel {
+    flex: 1;
+    width: 100%;
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid var(--surface-4);
+  }
+
+  .controls {
+    padding: 8px 12px;
   }
 }
 
+/* Mobile phones */
 @media (max-width: 600px) {
   .header {
-    padding: 0 12px;
+    padding: 8px 12px;
+    height: auto;
+    min-height: 48px;
   }
-  
+
   .meeting-title {
+    font-size: 12px;
+  }
+
+  .header-left .logo {
     display: none;
   }
-  
-  .search-box span {
+
+  .search-box {
     display: none;
   }
-  
+
   .video-area {
-    padding: 12px;
+    padding: 6px;
   }
-  
+
+  .participants {
+    gap: 6px;
+  }
+
   .participant {
-    width: 100px;
+    width: 80px;
   }
-  
+
   .participant-video {
-    height: 65px;
+    height: 60px;
+    border-radius: 8px;
   }
-  
+
+  .participant-name {
+    font-size: 9px;
+    padding: 2px 4px;
+  }
+
+  .participant-badge {
+    font-size: 7px;
+    padding: 1px 4px;
+    top: 4px;
+    right: 4px;
+  }
+
+  .controls {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
   .control-btn {
     width: 40px;
     height: 40px;
+  }
+
+  .chat-panel {
+    min-height: 300px;
+  }
+
+  .panel-tabs {
+    padding: 8px;
+  }
+
+  .panel-tab {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .chat-messages {
+    padding: 8px;
+  }
+
+  .message {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .chat-input-area {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .chat-input {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+    padding: 10px 12px;
+  }
+
+  .record-btn,
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px; /* Touch target minimum */
+  }
+
+  /* Offer cards on mobile */
+  .offer-card {
+    padding: 12px;
+  }
+
+  .offer-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .offer-btn {
+    flex: 1 1 45%;
+    padding: 10px;
+    font-size: 12px;
+  }
+
+  /* Response guidance on mobile */
+  .response-guidance {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .guidance-close {
+    padding: 4px 8px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .participant {
+    width: 70px;
+  }
+
+  .participant-video {
+    height: 50px;
+  }
+
+  .participant-name {
+    font-size: 8px;
+  }
+
+  .chat-input {
+    padding: 8px 10px;
+  }
+}
+
+/* Entry form mobile styles */
+@media (max-width: 600px) {
+  .entry-container {
+    padding: 16px;
+    margin: 8px;
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+
+  .entry-header h1 {
+    font-size: 24px;
+  }
+
+  .entry-header p {
+    font-size: 14px;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .form-group {
+    width: 100%;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-size: 16px; /* Prevent iOS zoom */
+    padding: 12px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+  }
+
+  .auth-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .auth-btn {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .credits-bar {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+/* Auth view mobile */
+@media (max-width: 600px) {
+  .auth-container {
+    padding: 20px;
+    margin: 16px;
+  }
+
+  .auth-header h1 {
+    font-size: 28px;
+  }
+
+  .auth-benefits {
+    gap: 12px;
+  }
+
+  .benefit-item {
+    padding: 12px;
+  }
+}
+
+/* Mobile landscape mode */
+@media (max-width: 900px) and (orientation: landscape) {
+  .main-wrapper {
+    flex-direction: row;
+  }
+
+  .video-area {
+    flex: 0 0 35%;
+    max-width: 35%;
+  }
+
+  .participants {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 100%;
+  }
+
+  .participant {
+    width: 100%;
+  }
+
+  .chat-panel {
+    flex: 1;
+    border-top: none;
+    border-left: 1px solid var(--surface-4);
   }
 }
 
