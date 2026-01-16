@@ -9,16 +9,79 @@
 <body>
   <div class="app">
     <!-- ========================================
-         VIEW 0: Auth / Login (HIDDEN - No auth version)
+         VIEW 0: Auth / Login
          ======================================== -->
-    <div class="view view--auth" id="authView" style="display: none;">
-      <!-- Auth view removed for no-login version -->
+    <div class="view view--auth" id="authView">
+      <div class="auth-container">
+        <div class="auth-header">
+          <div class="auth-logo">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="auth-title">Shark Tank Simulator</h1>
+          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
+        </div>
+
+        <!-- Login buttons (shown when not logged in) -->
+        <div class="auth-content" id="authLoginContent">
+          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Sign in with X (Twitter)
+          </button>
+
+          <p class="auth-note">
+            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
+          </p>
+
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+
+          <button class="auth-btn auth-btn--guest" id="guestBtn">
+            Try Free ($5 Credit)
+          </button>
+          <p class="auth-guest-note">
+            Get $5 in free credits to try the simulator. Sign up to unlock unlimited access.
+          </p>
+        </div>
+
+        <!-- Logged in state (shown when logged in) -->
+        <div class="auth-content auth-logged-in" id="authLoggedInContent" style="display: none;">
+          <div class="auth-user-info">
+            <img class="auth-user-avatar" id="authUserAvatar" src="" alt="User">
+            <span class="auth-user-name" id="authUserName">@username</span>
+          </div>
+
+          <button class="auth-btn auth-btn--primary" id="continueToFormBtn">
+            Continue to Pitch Form
+          </button>
+
+          <button class="auth-btn auth-btn--secondary" id="authLogoutBtn">
+            Sign Out
+          </button>
+        </div>
+
+        <div class="auth-footer">
+          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10"/>
+              <path d="M18 20V4"/>
+              <path d="M6 20v-4"/>
+            </svg>
+            View Leaderboard
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ========================================
          VIEW 1: Entry Form
          ======================================== -->
-    <div class="view view--entry" id="entryView">
+    <div class="view view--entry" id="entryView" style="display: none;">
       <div class="entry-container">
         <!-- User Profile Bar (shown when logged in) -->
         <div class="user-bar" id="userBar" style="display: none;">
@@ -44,8 +107,20 @@
           </div>
         </div>
 
-        <!-- Back to Auth button (hidden in no-login version) -->
-        <div class="entry-back-row" style="display: none;">
+        <!-- Credits Display (for guests) -->
+        <div class="credits-bar" id="creditsBar" style="display: none;">
+          <div class="credits-info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span>Credits remaining: <strong id="creditsAmount">$5.00</strong></span>
+          </div>
+          <button class="credits-upgrade-btn" id="creditsUpgradeBtn">Sign up for unlimited</button>
+        </div>
+
+        <!-- Back to Auth button -->
+        <div class="entry-back-row">
           <button type="button" class="entry-back-btn" id="backToAuthBtn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 12H5"/>
@@ -126,8 +201,8 @@
             </div>
           </div>
 
-          <!-- Verification Section (hidden in no-login version) -->
-          <div class="form-group form-group--verification" id="verificationSection" style="display: none !important;">
+          <!-- Verification Section (shows when user is logged in and has revenue/users) -->
+          <div class="form-group form-group--verification" id="verificationSection" style="display: none;">
             <label class="form-label">Verify your metrics (optional)</label>
             <p class="form-hint verification-hint">Verified metrics appear on the leaderboard with a badge</p>
 
@@ -253,8 +328,15 @@
          VIEW 3: Panel (Video Call UI)
          ======================================== -->
     <div class="view view--panel" id="panelView" style="display: none;">
-      <!-- Demo Mode Banner (hidden in no-login version - everyone gets real AI) -->
-      <div id="demoBanner" class="demo-banner" style="display: none !important;">
+      <!-- Credits Banner (shown for guests) -->
+      <div id="creditsBanner" class="credits-banner" style="display: none;">
+        <div class="credits-banner-content">
+          <span class="credits-badge">FREE TRIAL</span>
+          <span class="credits-text">Credits: <strong id="panelCreditsAmount">$5.00</strong></span>
+          <button id="panelUpgradeBtn" class="credits-banner-cta">
+            Sign up for unlimited
+          </button>
+        </div>
       </div>
 
       <!-- Top Header Bar (Light) -->
@@ -568,9 +650,9 @@
     </div>
 
     <!-- ========================================
-         VIEW: Leaderboard (hidden in no-login version)
+         VIEW: Leaderboard
          ======================================== -->
-    <div class="view view--leaderboard" id="leaderboardView" style="display: none !important;">
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
       <div class="leaderboard-container">
         <div class="leaderboard-header">
           <button class="leaderboard-back" id="leaderboardBackBtn">
@@ -617,13 +699,63 @@
         </div>
       </div>
     </div>
+
+    <!-- Credits Exhausted Modal -->
+    <div class="modal credits-modal" id="creditsExhaustedModal" style="display: none;">
+      <div class="modal-backdrop" onclick="window.hideCreditsModal()"></div>
+      <div class="modal-content credits-modal-content">
+        <div class="credits-modal-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 class="credits-modal-title">Free Credits Used Up!</h3>
+        <p class="credits-modal-text">
+          You've used your $5 in free credits. Sign up with Twitter to get unlimited access and compete on the leaderboard!
+        </p>
+        <button class="auth-btn auth-btn--twitter" id="modalTwitterLoginBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          Sign up with X (Twitter)
+        </button>
+        <button class="credits-modal-close" onclick="window.hideCreditsModal()">Maybe later</button>
+      </div>
+    </div>
   </div>
 
-  <!-- Firebase SDK removed - No login version -->
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-env.js"></script>
   <script>
-    // No Firebase auth needed in this version
-    window.firebaseAuth = null;
-    window.dispatchEvent(new Event('firebase-ready'));
+    // Initialize Firebase Auth
+    (function() {
+      try {
+        if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG) {
+          firebase.initializeApp(window.FIREBASE_CONFIG);
+          const auth = firebase.auth();
+          const provider = new firebase.auth.TwitterAuthProvider();
+
+          window.firebaseAuth = {
+            auth: auth,
+            provider: provider,
+            signInWithTwitter: () => auth.signInWithPopup(provider),
+            signOutUser: () => auth.signOut(),
+            onAuthStateChanged: (callback) => auth.onAuthStateChanged(callback),
+            getCurrentUser: () => auth.currentUser
+          };
+        } else {
+          window.firebaseAuth = null;
+        }
+      } catch (err) {
+        console.log('Firebase init error:', err);
+        window.firebaseAuth = null;
+      }
+      window.dispatchEvent(new Event('firebase-ready'));
+    })();
   </script>
   <script src="app.js"></script>
 </body>

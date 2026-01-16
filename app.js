@@ -55,6 +55,116 @@
   let isDemoMode = false;
 
   // ========================================
+  // Credits System
+  // ========================================
+  const INITIAL_CREDITS = 5.00; // $5 in free credits
+  const COST_PER_PITCH = 0.50; // ~$0.50 per pitch session
+  const CREDITS_STORAGE_KEY = 'shark_tank_credits';
+
+  function getCredits() {
+    const stored = localStorage.getItem(CREDITS_STORAGE_KEY);
+    if (stored === null) {
+      // First time user - give them initial credits
+      setCredits(INITIAL_CREDITS);
+      return INITIAL_CREDITS;
+    }
+    return parseFloat(stored);
+  }
+
+  function setCredits(amount) {
+    localStorage.setItem(CREDITS_STORAGE_KEY, amount.toFixed(2));
+    updateCreditsDisplay();
+  }
+
+  function deductCredits(amount = COST_PER_PITCH) {
+    const current = getCredits();
+    const newAmount = Math.max(0, current - amount);
+    setCredits(newAmount);
+    return newAmount;
+  }
+
+  function hasCredits() {
+    return getCredits() > 0;
+  }
+
+  function updateCreditsDisplay() {
+    const credits = getCredits();
+    const formattedCredits = `$${credits.toFixed(2)}`;
+
+    // Update all credit displays
+    const creditsAmount = document.getElementById('creditsAmount');
+    const panelCreditsAmount = document.getElementById('panelCreditsAmount');
+
+    if (creditsAmount) creditsAmount.textContent = formattedCredits;
+    if (panelCreditsAmount) panelCreditsAmount.textContent = formattedCredits;
+
+    // Update styling based on credit level
+    const creditsBar = document.getElementById('creditsBar');
+    const creditsBanner = document.getElementById('creditsBanner');
+
+    const elements = [creditsBar, creditsBanner].filter(Boolean);
+    elements.forEach(el => {
+      el.classList.remove('credits-low', 'credits-critical');
+      if (credits <= 1) {
+        el.classList.add('credits-critical');
+      } else if (credits <= 2) {
+        el.classList.add('credits-low');
+      }
+    });
+  }
+
+  function showCreditsUI() {
+    if (!isGuest) return; // Only show for guests
+
+    const creditsBar = document.getElementById('creditsBar');
+    const creditsBanner = document.getElementById('creditsBanner');
+
+    if (creditsBar) creditsBar.style.display = 'flex';
+    if (creditsBanner) creditsBanner.style.display = 'block';
+
+    updateCreditsDisplay();
+  }
+
+  function hideCreditsUI() {
+    const creditsBar = document.getElementById('creditsBar');
+    const creditsBanner = document.getElementById('creditsBanner');
+
+    if (creditsBar) creditsBar.style.display = 'none';
+    if (creditsBanner) creditsBanner.style.display = 'none';
+  }
+
+  function showCreditsExhaustedModal() {
+    const modal = document.getElementById('creditsExhaustedModal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  window.hideCreditsModal = function() {
+    const modal = document.getElementById('creditsExhaustedModal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  function initCreditsSystem() {
+    // Upgrade buttons
+    const upgradeBtn = document.getElementById('creditsUpgradeBtn');
+    const panelUpgradeBtn = document.getElementById('panelUpgradeBtn');
+    const modalTwitterBtn = document.getElementById('modalTwitterLoginBtn');
+
+    const handleUpgrade = () => {
+      if (window.firebaseAuth) {
+        window.firebaseAuth.signInWithTwitter().catch(err => {
+          console.log('Twitter login failed:', err);
+        });
+      } else {
+        showView('authView');
+      }
+    };
+
+    if (upgradeBtn) upgradeBtn.addEventListener('click', handleUpgrade);
+    if (panelUpgradeBtn) panelUpgradeBtn.addEventListener('click', handleUpgrade);
+    if (modalTwitterBtn) modalTwitterBtn.addEventListener('click', handleUpgrade);
+  }
+
+  // ========================================
   // Demo Mode Script (Pre-defined pitch for guests)
   // ========================================
   const DEMO_SCRIPT = {
@@ -159,9 +269,15 @@
     const guestBtn = document.getElementById('guestBtn');
     if (guestBtn) {
       guestBtn.addEventListener('click', () => {
+        // Check if guest has credits
+        if (!hasCredits()) {
+          showCreditsExhaustedModal();
+          return;
+        }
         isGuest = true;
         currentUser = null;
         showView('entryView');
+        showCreditsUI();
         updateAuthUI();
       });
     }
@@ -171,11 +287,14 @@
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
         try {
-          await window.firebaseAuth.signOutUser();
+          if (window.firebaseAuth) {
+            await window.firebaseAuth.signOutUser();
+          }
           currentUser = null;
           isGuest = false;
+          hideCreditsUI();
           updateAuthUI();
-          showView('entryView'); // NO-LOGIN VERSION: Stay on entry form
+          showView('authView');
         } catch (error) {
           console.error('Logout failed:', error);
         }
@@ -224,9 +343,20 @@
       });
     }
 
-    // Back to Auth button (disabled in no-login version)
-    // const backToAuthBtn = document.getElementById('backToAuthBtn');
-    // Button is hidden via HTML, no listener needed
+    // Back to Auth button
+    const backToAuthBtn = document.getElementById('backToAuthBtn');
+    if (backToAuthBtn) {
+      backToAuthBtn.addEventListener('click', async () => {
+        // If logged in, sign out first
+        if (currentUser && window.firebaseAuth) {
+          await window.firebaseAuth.signOutUser();
+          currentUser = null;
+        }
+        isGuest = false;
+        hideCreditsUI();
+        showView('authView');
+      });
+    }
 
     // Leaderboard tabs
     document.querySelectorAll('.leaderboard-tab').forEach(tab => {
@@ -798,6 +928,16 @@
     // Form submission
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      // Check credits for guests
+      if (isGuest) {
+        if (!hasCredits()) {
+          showCreditsExhaustedModal();
+          return;
+        }
+        // Deduct credits for this pitch
+        deductCredits();
+      }
 
       // Collect form data
       pitchData = {
@@ -3505,9 +3645,10 @@
   // ========================================
   function init() {
     initEntryForm();
-    // NO-LOGIN VERSION: Skip auth, go directly to entry form
-    // initAuth(); // Auth disabled in no-login version
-    showView('entryView');
+    initCreditsSystem();
+    initAuth();
+    // Show auth view first (users can sign in or try free)
+    showView('authView');
   }
 
   if (document.readyState === 'loading') {

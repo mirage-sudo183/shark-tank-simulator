@@ -3857,3 +3857,164 @@ a,
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
+/* ========================================
+   Credits System
+   ======================================== */
+
+/* Credits Bar (Entry Form) */
+.credits-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.credits-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 14px;
+}
+
+.credits-info svg {
+  opacity: 0.8;
+}
+
+.credits-info strong {
+  font-weight: 600;
+}
+
+.credits-upgrade-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.credits-upgrade-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Credits Banner (Panel View) */
+.credits-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  padding: 8px 16px;
+}
+
+.credits-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.credits-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.credits-text {
+  color: white;
+  font-size: 14px;
+}
+
+.credits-text strong {
+  font-weight: 600;
+}
+
+.credits-banner-cta {
+  background: white;
+  color: #4f46e5;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.credits-banner-cta:hover {
+  background: #f0f0f0;
+}
+
+/* Credits Exhausted Modal */
+.credits-modal-content {
+  text-align: center;
+  padding: 32px;
+  max-width: 400px;
+}
+
+.credits-modal-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.credits-modal-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #1a1a2e;
+}
+
+.credits-modal-text {
+  color: #666;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.credits-modal .auth-btn--twitter {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.credits-modal-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.credits-modal-close:hover {
+  color: #333;
+}
+
+/* Low credits warning */
+.credits-low {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.credits-critical {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
