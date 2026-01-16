@@ -1495,12 +1495,14 @@ body {
     min-height: 0;
   }
 
-  /* Make chat messages scrollable and flexible */
+  /* Make chat messages scrollable and flexible - reversed so newest at top */
   .chat-messages {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding: 10px;
+    display: flex;
+    flex-direction: column-reverse;
   }
 
   /* Compact header for mobile */
