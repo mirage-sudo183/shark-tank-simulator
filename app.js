@@ -20,7 +20,7 @@
   const API_BASE = isProduction ? RAILWAY_BACKEND_URL : window.location.origin;
 
   const TOTAL_SESSION_TIME = 900; // 15 minutes total
-  const PITCH_DURATION = 180; // 3 minutes max for pitch
+  const PITCH_DURATION = 60; // 1 minute max for pitch
   const USE_SSE = isProduction || window.location.port === '8443'; // Use SSE for Railway and local Flask
 
   // ========================================
@@ -1631,12 +1631,39 @@
       sharkStates[sharkId].flaggedForOut = flaggedForOut;
     }
 
+    // Update visible confidence bar
+    updateConfidenceBar(sharkId, confidence, delta);
+
     // Show visual confidence change indicator if significant
     if (Math.abs(delta) >= 3) {
       showConfidenceDelta(sharkId, delta);
     }
 
     console.log(`[Confidence] ${sharkName}: ${confidence} (${delta >= 0 ? '+' : ''}${delta})`);
+  }
+
+  function updateConfidenceBar(sharkId, confidence, delta) {
+    const bar = document.querySelector(`.confidence-bar[data-investor="${sharkId}"]`);
+    if (!bar) return;
+
+    // Update width (confidence is 0-100)
+    bar.style.width = `${confidence}%`;
+
+    // Update color class based on confidence level
+    bar.classList.remove('low', 'medium', 'high');
+    if (confidence < 35) {
+      bar.classList.add('low');
+    } else if (confidence < 65) {
+      bar.classList.add('medium');
+    } else {
+      bar.classList.add('high');
+    }
+
+    // Pulse animation for significant changes
+    if (Math.abs(delta) >= 5) {
+      bar.classList.add('pulse');
+      setTimeout(() => bar.classList.remove('pulse'), 500);
+    }
   }
 
   function showConfidenceDelta(sharkId, delta) {
@@ -1657,6 +1684,117 @@
       indicator.classList.add('fade-out');
       setTimeout(() => indicator.remove(), 300);
     }, 1500);
+
+    // Show shark reaction notification for significant changes
+    if (Math.abs(delta) >= 5) {
+      showSharkReaction(sharkId, delta);
+    }
+  }
+
+  // Shark reaction messages based on confidence change
+  const SHARK_REACTIONS = {
+    marcus: {
+      positive: ["I like what I'm hearing!", "This is getting interesting...", "Now we're talking!", "That's a strong point."],
+      negative: ["I'm not sure about this...", "That concerns me.", "You're losing me here.", "Hmm, I have doubts."],
+      very_positive: ["This could be huge!", "I'm getting excited!", "You've got my attention!"],
+      very_negative: ["This doesn't make sense.", "I'm skeptical.", "That's a red flag."]
+    },
+    victor: {
+      positive: ["Show me the money potential.", "The numbers are adding up.", "I can see the ROI.", "That's a royalty opportunity."],
+      negative: ["Where's the profit?", "That's not a business, it's a hobby.", "The math doesn't work.", "Too risky."],
+      very_positive: ["This is a money machine!", "I smell profit!", "Now THIS is interesting!"],
+      very_negative: ["You're out of your mind.", "This is insane.", "No way."]
+    },
+    elena: {
+      positive: ["I can see this on shelves!", "Great product appeal.", "Customers would love this.", "Smart approach."],
+      negative: ["It's too complicated.", "Who's the customer?", "I don't see the appeal.", "That's a tough sell."],
+      very_positive: ["This is a hero product!", "QVC would eat this up!", "Brilliant!"],
+      very_negative: ["I'm losing interest.", "This won't work.", "Not for me."]
+    },
+    richard: {
+      positive: ["Love the vision!", "Bold move.", "That's innovative.", "I see the potential."],
+      negative: ["Needs more focus.", "Too ambitious maybe?", "Let's be realistic.", "I'm concerned."],
+      very_positive: ["Revolutionary!", "This could change everything!", "Fantastic!"],
+      very_negative: ["I'm out.", "Not convinced.", "Can't get behind this."]
+    },
+    daniel: {
+      positive: ["Strong fundamentals.", "Good business sense.", "I appreciate the honesty.", "That's encouraging."],
+      negative: ["What about competition?", "The market is tough.", "I have reservations.", "Needs work."],
+      very_positive: ["Exceptional!", "You've done the work!", "Very impressive!"],
+      very_negative: ["Too many risks.", "I can't invest.", "This worries me."]
+    }
+  };
+
+  const SHARK_IMAGES = {
+    marcus: 'images/sharks/marc_cuban.jpg',
+    victor: 'images/sharks/kevin_oleary.jpg',
+    elena: 'images/sharks/lori_greiner.jpg',
+    richard: 'images/sharks/richard_branson.jpg',
+    daniel: 'images/sharks/robert_herjavec.jpg'
+  };
+
+  const SHARK_EMOJIS = {
+    positive: ['👍', '💪', '🔥', '✨'],
+    negative: ['🤔', '😬', '👎', '❌'],
+    very_positive: ['🚀', '💰', '🎯', '⭐'],
+    very_negative: ['😤', '🙅', '💔', '⚠️']
+  };
+
+  function showSharkReaction(sharkId, delta) {
+    const container = document.getElementById('sharkReactions');
+    if (!container) return;
+
+    const sharkName = SHARK_NAMES[sharkId] || sharkId;
+    const reactions = SHARK_REACTIONS[sharkId];
+    if (!reactions) return;
+
+    // Determine reaction type
+    let reactionType, reactionClass;
+    if (delta >= 10) {
+      reactionType = 'very_positive';
+      reactionClass = 'positive';
+    } else if (delta >= 5) {
+      reactionType = 'positive';
+      reactionClass = 'positive';
+    } else if (delta <= -10) {
+      reactionType = 'very_negative';
+      reactionClass = 'negative';
+    } else {
+      reactionType = 'negative';
+      reactionClass = 'negative';
+    }
+
+    const messages = reactions[reactionType] || reactions[reactionClass];
+    const message = messages[Math.floor(Math.random() * messages.length)];
+    const emojis = SHARK_EMOJIS[reactionType];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `shark-reaction ${reactionClass}`;
+    notification.innerHTML = `
+      <div class="shark-reaction-avatar">
+        <img src="${SHARK_IMAGES[sharkId]}" alt="${sharkName}">
+      </div>
+      <div class="shark-reaction-content">
+        <div class="shark-reaction-name">${sharkName}</div>
+        <div class="shark-reaction-text">${message}</div>
+      </div>
+      <div class="shark-reaction-emoji">${emoji}</div>
+    `;
+
+    container.appendChild(notification);
+
+    // Remove after delay
+    setTimeout(() => {
+      notification.classList.add('exiting');
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+
+    // Limit to 3 notifications at a time
+    while (container.children.length > 3) {
+      container.firstChild.remove();
+    }
   }
 
   function handleSharkReturned(data) {
@@ -3228,13 +3366,22 @@
           </div>
           ${royaltyText}
         </div>
-        <button class="ending-btn" onclick="location.reload()">New Pitch</button>
+        <button class="ending-btn ending-btn--share" onclick="window.showDealCard(window.lastDealData)">Share Your Deal</button>
+        <button class="ending-btn ending-btn--secondary" onclick="location.reload()">New Pitch</button>
       </div>
     `;
     document.body.appendChild(overlay);
 
     // Ensure overlay stays on top
     overlay.style.zIndex = '9999';
+
+    // Store deal data for sharing
+    window.lastDealData = data;
+
+    // Auto-show deal card after 2 seconds
+    setTimeout(() => {
+      showDealCard(data);
+    }, 2500);
   }
 
   // ========================================
@@ -3467,6 +3614,177 @@
     playNote(1046.50, now + 1.0, 1.3, 0.08); // C6 (sparkle)
   }
 
+  // ========================================
+  // Shareable Deal Card
+  // ========================================
+
+  let currentDealData = null;
+
+  function showDealCard(dealData) {
+    currentDealData = dealData;
+
+    const modal = document.getElementById('dealCardModal');
+    if (!modal) return;
+
+    // Populate card data
+    const companyName = pitchData?.companyName || 'Your Company';
+    const amount = dealData.offer?.amount || 0;
+    const equity = dealData.offer?.equity || 0;
+    const sharkName = dealData.sharkName || 'Investor';
+    const sharkId = dealData.sharkId || 'marcus';
+    const valuation = equity > 0 ? Math.round(amount / (equity / 100)) : 0;
+
+    // Update card elements
+    const companyEl = document.getElementById('dealCardCompany');
+    const amountEl = document.getElementById('dealCardAmount');
+    const equityEl = document.getElementById('dealCardEquity');
+    const sharkNameEl = document.getElementById('dealCardSharkName');
+    const sharkImgEl = document.getElementById('dealCardSharkImg');
+    const valuationEl = document.getElementById('dealCardValuation');
+    const dateEl = document.getElementById('dealCardDate');
+
+    if (companyEl) companyEl.textContent = companyName;
+    if (amountEl) amountEl.textContent = `$${amount.toLocaleString()}`;
+    if (equityEl) equityEl.textContent = `${equity}%`;
+    if (sharkNameEl) sharkNameEl.textContent = sharkName;
+    if (valuationEl) valuationEl.textContent = `Valuation: $${valuation.toLocaleString()}`;
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // Set shark image
+    if (sharkImgEl) {
+      const sharkImages = {
+        marcus: 'images/sharks/marc_cuban.jpg',
+        victor: 'images/sharks/kevin_oleary.jpg',
+        elena: 'images/sharks/lori_greiner.jpg',
+        richard: 'images/sharks/richard_branson.jpg',
+        daniel: 'images/sharks/robert_herjavec.jpg'
+      };
+      sharkImgEl.src = sharkImages[sharkId] || sharkImages.marcus;
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+  }
+
+  function closeDealCard() {
+    const modal = document.getElementById('dealCardModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  async function downloadDealCard() {
+    const card = document.getElementById('dealCard');
+    if (!card) return;
+
+    try {
+      // Use html2canvas if available, otherwise create a simple canvas
+      if (typeof html2canvas !== 'undefined') {
+        const canvas = await html2canvas(card, {
+          backgroundColor: '#0f172a',
+          scale: 2
+        });
+
+        const link = document.createElement('a');
+        link.download = `shark-tank-deal-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        // Fallback: create a simple image using canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+
+        // Draw background
+        const gradient = ctx.createLinearGradient(0, 0, 800, 600);
+        gradient.addColorStop(0, '#0f172a');
+        gradient.addColorStop(0.5, '#1e3a5a');
+        gradient.addColorStop(1, '#0f172a');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 800, 600);
+
+        // Draw border
+        ctx.strokeStyle = '#D4AF37';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(20, 20, 760, 560);
+
+        // Draw text
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+
+        ctx.font = 'bold 24px Arial';
+        ctx.fillText('🦈 SHARK TANK SIMULATOR', 400, 80);
+
+        ctx.font = 'bold 48px Arial';
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText('DEAL!', 400, 160);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 36px Arial';
+        ctx.fillText(currentDealData?.sharkName || 'Investor', 400, 280);
+
+        ctx.font = '28px Arial';
+        const amount = currentDealData?.offer?.amount || 0;
+        const equity = currentDealData?.offer?.equity || 0;
+        ctx.fillText(`$${amount.toLocaleString()} for ${equity}%`, 400, 340);
+
+        ctx.font = '20px Arial';
+        ctx.fillStyle = '#94a3b8';
+        const valuation = equity > 0 ? Math.round(amount / (equity / 100)) : 0;
+        ctx.fillText(`Valuation: $${valuation.toLocaleString()}`, 400, 400);
+
+        ctx.fillText(pitchData?.companyName || 'Your Company', 400, 500);
+
+        const link = document.createElement('a');
+        link.download = `shark-tank-deal-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    } catch (err) {
+      console.error('Failed to download deal card:', err);
+      alert('Failed to download image. Please try taking a screenshot instead.');
+    }
+  }
+
+  function shareDealTwitter() {
+    if (!currentDealData) return;
+
+    const companyName = pitchData?.companyName || 'my company';
+    const amount = currentDealData.offer?.amount || 0;
+    const equity = currentDealData.offer?.equity || 0;
+    const sharkName = currentDealData.sharkName || 'an investor';
+
+    const tweetText = `🦈 I just closed a deal on Shark Tank Simulator!\n\n${sharkName} invested $${amount.toLocaleString()} for ${equity}% of ${companyName}!\n\nThink you can do better? Try it yourself 👇`;
+
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(window.location.href)}`;
+
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
+  }
+
+  function copyDealLink() {
+    const companyName = pitchData?.companyName || 'company';
+    const amount = currentDealData?.offer?.amount || 0;
+    const equity = currentDealData?.offer?.equity || 0;
+
+    const shareText = `🦈 Check out my Shark Tank Simulator deal: $${amount.toLocaleString()} for ${equity}% of ${companyName}! Try it at ${window.location.href}`;
+
+    navigator.clipboard.writeText(shareText).then(() => {
+      // Show feedback
+      const btn = document.querySelector('.deal-card-btn--copy');
+      if (btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span style="color: #22c55e;">✓ Copied!</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 2000);
+      }
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    });
+  }
+
   function showDealSummary() {
     // Stop everything
     stopTimer();
@@ -3608,10 +3926,30 @@
   // ========================================
   function initParticipants() {
     const participants = document.querySelectorAll('.participant[data-investor]');
-    
+
     participants.forEach(participant => {
       participant.addEventListener('click', () => cycleState(participant));
     });
+
+    // Initialize confidence bars with current shark states
+    initConfidenceBars();
+  }
+
+  function initConfidenceBars() {
+    // Set initial confidence bar values from sharkStates
+    Object.keys(sharkStates).forEach(sharkId => {
+      const confidence = sharkStates[sharkId]?.confidence || 50;
+      updateConfidenceBar(sharkId, confidence, 0);
+    });
+
+    // If no sharkStates yet, default all bars to 50%
+    if (Object.keys(sharkStates).length === 0) {
+      const bars = document.querySelectorAll('.confidence-bar');
+      bars.forEach(bar => {
+        bar.style.width = '50%';
+        bar.classList.add('medium');
+      });
+    }
   }
 
   function cycleState(participant) {
@@ -3760,6 +4098,13 @@
 
   // Transcript panel
   window.toggleTranscript = toggleTranscript;
+
+  // Deal card sharing
+  window.showDealCard = showDealCard;
+  window.closeDealCard = closeDealCard;
+  window.downloadDealCard = downloadDealCard;
+  window.shareDealTwitter = shareDealTwitter;
+  window.copyDealLink = copyDealLink;
 
   // ========================================
   // Initialize

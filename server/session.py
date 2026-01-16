@@ -41,7 +41,7 @@ class SessionManager:
                 'counterOffers': [],  # User counter-offers
                 'finalDeal': None,
                 'createdAt': int(time.time() * 1000),
-                'pitchDuration': 180,  # 3 minutes
+                'pitchDuration': 60,  # 1 minute
                 'pitchTimeUsed': 0,
                 # New deal flow state
                 'deal_mode': deal_mode.to_dict(),
