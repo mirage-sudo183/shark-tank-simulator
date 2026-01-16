@@ -214,20 +214,27 @@
   let firebaseReady = false;
 
   function initAuth() {
-    // Wait for Firebase to be ready
+    // Set up button listeners immediately (don't wait for Firebase)
+    setupAuthButtons();
+
+    // Wait for Firebase to be ready for auth state changes
     if (window.firebaseAuth) {
-      setupAuthListeners();
+      setupFirebaseAuthListeners();
     } else {
-      window.addEventListener('firebase-ready', setupAuthListeners);
+      window.addEventListener('firebase-ready', setupFirebaseAuthListeners);
     }
   }
 
-  function setupAuthListeners() {
+  function setupFirebaseAuthListeners() {
     firebaseReady = true;
-    const { onAuthChange } = window.firebaseAuth;
+
+    if (!window.firebaseAuth || !window.firebaseAuth.onAuthStateChanged) {
+      console.log('Firebase auth not available');
+      return;
+    }
 
     // Listen for auth state changes
-    onAuthChange((user, twitterHandle) => {
+    window.firebaseAuth.onAuthStateChanged((user) => {
       currentUser = user;
       updateAuthUI();
 
@@ -236,9 +243,6 @@
         showView('entryView');
       }
     });
-
-    // Set up auth button listeners
-    setupAuthButtons();
   }
 
   function setupAuthButtons() {
@@ -246,11 +250,15 @@
     const twitterLoginBtn = document.getElementById('twitterLoginBtn');
     if (twitterLoginBtn) {
       twitterLoginBtn.addEventListener('click', async () => {
+        if (!window.firebaseAuth || !window.firebaseAuth.signInWithTwitter) {
+          alert('Twitter sign-in is not available. Please try the free trial instead.');
+          return;
+        }
         try {
           twitterLoginBtn.disabled = true;
           twitterLoginBtn.textContent = 'Signing in...';
           await window.firebaseAuth.signInWithTwitter();
-          // onAuthChange will handle the redirect
+          // onAuthStateChanged will handle the redirect
         } catch (error) {
           console.error('Twitter login failed:', error);
           alert('Sign in failed. Please try again.');
