@@ -2026,10 +2026,18 @@ body {
 
 .chat-input-area {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid #27272a;
   align-items: center;
+}
+
+/* Make input controls row */
+.chat-input-area > .record-btn,
+.chat-input-area > .chat-input,
+.chat-input-area > .send-btn {
+  flex-shrink: 0;
 }
 
 .chat-transcript {
@@ -3755,28 +3763,35 @@ a,
 }
 
 /* ========================================
-   Response Guidance Tooltip (Minimal)
+   Response Guidance Tooltip (Above Chat Input)
    ======================================== */
 .response-guidance {
   display: none;
-  position: absolute;
-  bottom: 60px;
-  left: 50%;
-  transform: translateX(-50%);
+  width: 100%;
   background: rgba(30, 41, 59, 0.95);
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
   padding: 8px 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 100;
-  animation: fadeInUp 0.3s ease-out;
-  white-space: nowrap;
+  border-bottom: none;
+  margin-bottom: -1px;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .response-guidance.visible {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeInUp {
