@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Investor Panel — Shark Tank Simulator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- ========================================
+         VIEW 0: Auth / Login
+         ======================================== -->
+    <div class="view view--auth" id="authView">
+      <div class="auth-container">
+        <div class="auth-header">
+          <div class="auth-logo">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="auth-title">Shark Tank Simulator</h1>
+          <p class="auth-subtitle">Pitch to AI investors. Compete on the leaderboard.</p>
+        </div>
+
+        <!-- Login buttons (shown when not logged in) -->
+        <div class="auth-content" id="authLoginContent">
+          <button class="auth-btn auth-btn--twitter" id="twitterLoginBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Sign in with X (Twitter)
+          </button>
+
+          <p class="auth-note">
+            Sign in with Twitter to compete on the leaderboard and verify your business metrics.
+          </p>
+
+          <div class="auth-divider">
+            <span>or</span>
+          </div>
+
+          <button class="auth-btn auth-btn--guest" id="guestBtn">
+            Try Free ($5 Credit)
+          </button>
+          <p class="auth-guest-note">
+            Get $5 in free credits to try the simulator. Sign up to unlock unlimited access.
+          </p>
+        </div>
+
+        <!-- Logged in state (shown when logged in) -->
+        <div class="auth-content auth-logged-in" id="authLoggedInContent" style="display: none;">
+          <div class="auth-user-info">
+            <img class="auth-user-avatar" id="authUserAvatar" src="" alt="User">
+            <span class="auth-user-name" id="authUserName">@username</span>
+          </div>
+
+          <button class="auth-btn auth-btn--primary" id="continueToFormBtn">
+            Continue to Pitch Form
+          </button>
+
+          <button class="auth-btn auth-btn--secondary" id="authLogoutBtn">
+            Sign Out
+          </button>
+        </div>
+
+        <div class="auth-footer">
+          <button class="auth-leaderboard-btn" id="viewLeaderboardBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10"/>
+              <path d="M18 20V4"/>
+              <path d="M6 20v-4"/>
+            </svg>
+            View Leaderboard
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         VIEW 1: Entry Form
+         ======================================== -->
+    <div class="view view--entry" id="entryView" style="display: none;">
+      <div class="entry-container">
+        <!-- User Profile Bar (shown when logged in) -->
+        <div class="user-bar" id="userBar" style="display: none;">
+          <div class="user-bar-left">
+            <img class="user-bar-avatar" id="userBarAvatar" src="" alt="User">
+            <span class="user-bar-name" id="userBarName">@username</span>
+          </div>
+          <div class="user-bar-right">
+            <button class="user-bar-btn" id="userLeaderboardBtn" title="Leaderboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20V10"/>
+                <path d="M18 20V4"/>
+                <path d="M6 20v-4"/>
+              </svg>
+            </button>
+            <button class="user-bar-btn user-bar-btn--logout" id="logoutBtn" title="Sign Out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Credits Display (for guests) -->
+        <div class="credits-bar" id="creditsBar" style="display: none;">
+          <div class="credits-info">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span>Credits remaining: <strong id="creditsAmount">$5.00</strong></span>
+          </div>
+          <button class="credits-upgrade-btn" id="creditsUpgradeBtn">Sign up for unlimited</button>
+        </div>
+
+        <!-- Back to Auth button -->
+        <div class="entry-back-row">
+          <button type="button" class="entry-back-btn" id="backToAuthBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back to Login
+          </button>
+        </div>
+
+        <div class="entry-header">
+          <div class="entry-logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <h1 class="entry-title">Enter the Panel</h1>
+          <p class="entry-subtitle">5 investors. One pitch. No second chances.</p>
+        </div>
+
+        <form class="entry-form" id="entryForm">
+          <!-- Company Name -->
+          <div class="form-group">
+            <label class="form-label" for="companyName">Company name</label>
+            <input type="text" class="form-input" id="companyName" name="companyName" required placeholder="e.g. Acme Corp">
+          </div>
+
+          <!-- Amount Raising -->
+          <div class="form-row">
+            <div class="form-group form-group--flex">
+              <label class="form-label" for="amountRaising">Amount raising</label>
+              <div class="input-with-prefix">
+                <span class="input-prefix">$</span>
+                <input type="number" class="form-input form-input--with-prefix" id="amountRaising" name="amountRaising" required placeholder="500000" min="1">
+              </div>
+            </div>
+            <div class="form-group form-group--small">
+              <label class="form-label" for="equityPercent">Equity offered</label>
+              <div class="input-with-suffix">
+                <input type="number" class="form-input form-input--with-suffix" id="equityPercent" name="equityPercent" required placeholder="10" min="1" max="100">
+                <span class="input-suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- What the company does -->
+          <div class="form-group">
+            <label class="form-label" for="companyDescription">What does your company do?</label>
+            <textarea class="form-textarea" id="companyDescription" name="companyDescription" required placeholder="Describe your product or service in plain language..." maxlength="300" rows="3"></textarea>
+            <span class="form-hint"><span id="descCharCount">0</span>/300</span>
+          </div>
+
+          <!-- Why now -->
+          <div class="form-group">
+            <label class="form-label" for="whyNow">Why are you pitching now?</label>
+            <textarea class="form-textarea" id="whyNow" name="whyNow" required placeholder="What's changed? Why is this the right moment?" maxlength="200" rows="2"></textarea>
+            <span class="form-hint"><span id="whyNowCharCount">0</span>/200</span>
+          </div>
+
+          <!-- Proof Signal -->
+          <div class="form-group">
+            <label class="form-label" for="proofType">What's your strongest proof right now?</label>
+            <select class="form-select" id="proofType" name="proofType" required>
+              <option value="" disabled selected>Select one...</option>
+              <option value="revenue">Revenue / MRR</option>
+              <option value="users">Active users</option>
+              <option value="customers">Signed customers / pilots</option>
+              <option value="idea">Idea stage</option>
+            </select>
+          </div>
+
+          <!-- Proof Value (conditional) -->
+          <div class="form-group form-group--proof" id="proofValueGroup" style="display: none;">
+            <label class="form-label" for="proofValue" id="proofValueLabel">Value</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix" id="proofValuePrefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="proofValue" name="proofValue" placeholder="0" min="0">
+            </div>
+          </div>
+
+          <!-- Verification Section (shows when user is logged in and has revenue/users) -->
+          <div class="form-group form-group--verification" id="verificationSection" style="display: none;">
+            <label class="form-label">Verify your metrics (optional)</label>
+            <p class="form-hint verification-hint">Verified metrics appear on the leaderboard with a badge</p>
+
+            <!-- Verification Options -->
+            <div class="verification-options">
+              <!-- DeFi Verification -->
+              <div class="verification-option" id="defiVerificationOption">
+                <button type="button" class="verification-btn" id="verifyDefiBtn">
+                  <svg class="verification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 12l2 2 4-4"/>
+                  </svg>
+                  <span>Verify with DefiLlama</span>
+                </button>
+                <span class="verification-desc">For crypto/DeFi protocols</span>
+              </div>
+
+              <!-- TrustMRR Verification -->
+              <div class="verification-option" id="trustmrrVerificationOption">
+                <button type="button" class="verification-btn" id="verifyTrustMRRBtn">
+                  <svg class="verification-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                  <span>Verify with TrustMRR</span>
+                </button>
+                <span class="verification-desc">For SaaS with Stripe</span>
+              </div>
+            </div>
+
+            <!-- Verification Status -->
+            <div class="verification-status" id="verificationStatus" style="display: none;">
+              <div class="verification-badge" id="verificationBadge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm-1.5 14.94l-3.5-3.5 1.41-1.41 2.09 2.09 5.59-5.59 1.41 1.41-7 7z"/>
+                </svg>
+                <span id="verificationText">Verified</span>
+              </div>
+              <span class="verification-details" id="verificationDetails"></span>
+            </div>
+          </div>
+
+          <!-- DefiLlama Search Modal -->
+          <div class="modal" id="defiModal" style="display: none;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>Verify with DefiLlama</h3>
+                <button type="button" class="modal-close" id="closeDefiModal">&times;</button>
+              </div>
+              <div class="modal-body">
+                <p>Search for your protocol. We'll verify ownership by matching your Twitter handle.</p>
+                <div class="search-input-wrapper">
+                  <input type="text" class="form-input" id="defiSearchInput" placeholder="Search protocols...">
+                  <div class="search-spinner" id="defiSearchSpinner" style="display: none;"></div>
+                </div>
+                <div class="search-results" id="defiSearchResults"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TrustMRR Modal -->
+          <div class="modal" id="trustmrrModal" style="display: none;">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h3>Verify with TrustMRR</h3>
+                <button type="button" class="modal-close" id="closeTrustMRRModal">&times;</button>
+              </div>
+              <div class="modal-body">
+                <p>Enter your TrustMRR profile URL. We'll verify by matching your Twitter handle.</p>
+                <input type="text" class="form-input" id="trustmrrUrlInput" placeholder="trustmrr.com/startup/yourcompany">
+                <button type="button" class="btn btn--primary" id="verifyTrustMRRSubmit">Verify</button>
+                <div class="verification-result" id="trustmrrResult" style="display: none;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Optional: Pushback expectation -->
+          <div class="form-group form-group--optional">
+            <label class="form-label" for="expectedPushback">
+              What do you expect investors to push back on?
+              <span class="form-label-optional">Optional</span>
+            </label>
+            <input type="text" class="form-input" id="expectedPushback" name="expectedPushback" placeholder="e.g. Our go-to-market strategy...">
+          </div>
+
+          <!-- Submit -->
+          <button type="submit" class="entry-submit">Enter the Panel</button>
+
+          <!-- Quick Test section - skips pitch, starts with offer -->
+          <div class="quick-test-section">
+            <div class="quick-test-label">Quick Test Mode</div>
+            <div class="quick-test-controls">
+              <select id="quickTestShark" class="quick-test-select">
+                <option value="victor">Kevin O'Leary (Royalty Deals)</option>
+                <option value="marcus">Mark Cuban (Tech/Equity)</option>
+                <option value="elena">Lori Greiner (Retail/Milestones)</option>
+                <option value="richard">Richard Branson (Brand/Vision)</option>
+                <option value="daniel">Robert Herjavec (Mentor/Stages)</option>
+              </select>
+              <button type="button" class="entry-skip" id="skipBtn">🧪 Test Offer</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ========================================
+         VIEW 2: Transition
+         ======================================== -->
+    <div class="view view--transition" id="transitionView" style="display: none;">
+      <div class="transition-content">
+        <div class="transition-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="23 7 16 12 23 17 23 7"/>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+          </svg>
+        </div>
+        <p class="transition-message">The panel is ready.</p>
+      </div>
+    </div>
+
+    <!-- ========================================
+         VIEW 3: Panel (Video Call UI)
+         ======================================== -->
+    <div class="view view--panel" id="panelView" style="display: none;">
+      <!-- Credits Banner (shown for guests) -->
+      <div id="creditsBanner" class="credits-banner" style="display: none;">
+        <div class="credits-banner-content">
+          <span class="credits-badge">FREE TRIAL</span>
+          <span class="credits-text">Credits: <strong id="panelCreditsAmount">$5.00</strong></span>
+          <button id="panelUpgradeBtn" class="credits-banner-cta">
+            Sign up for unlimited
+          </button>
+        </div>
+      </div>
+
+      <!-- Top Header Bar (Light) -->
+      <header class="header">
+        <div class="header-left">
+          <div class="logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="23 7 16 12 23 17 23 7"/>
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+            </svg>
+          </div>
+          <span class="meeting-title" id="meetingTitle">Investor Panel — Series A Pitch</span>
+          <!-- Timer removed - game is now confidence-driven -->
+        </div>
+        <div class="header-right">
+          <div class="user-avatar">
+            <span>Y</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <div class="main-wrapper">
+        <!-- Video Area -->
+        <main class="video-area">
+          <!-- Participant Strip -->
+          <div class="participant-strip">
+            <div class="participant" data-investor="marcus" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/marc_cuban.jpg" alt="Mark Cuban">
+                <div class="confidence-bar-container">
+                  <div class="confidence-bar" data-investor="marcus" style="width: 50%"></div>
+                </div>
+                <div class="participant-overlay">
+                  <span class="participant-name">Mark Cuban</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="victor" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/kevin_oleary.jpg" alt="Kevin O'Leary">
+                <div class="confidence-bar-container">
+                  <div class="confidence-bar" data-investor="victor" style="width: 50%"></div>
+                </div>
+                <div class="participant-overlay">
+                  <span class="participant-name">Kevin O'Leary</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant participant--you">
+              <div class="participant-video participant-video--you">
+                <video class="participant-webcam" id="userWebcamSmall" autoplay muted playsinline></video>
+                <div class="participant-avatar" id="userAvatarSmall">YOU</div>
+                <div class="participant-overlay">
+                  <span class="participant-name">You</span>
+                  <span class="participant-badge badge--presenting">PRESENTING</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="elena" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/lori_greiner.jpg" alt="Lori Greiner">
+                <div class="confidence-bar-container">
+                  <div class="confidence-bar" data-investor="elena" style="width: 50%"></div>
+                </div>
+                <div class="participant-overlay">
+                  <span class="participant-name">Lori Greiner</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="richard" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/richard_branson.jpg" alt="Richard Branson">
+                <div class="confidence-bar-container">
+                  <div class="confidence-bar" data-investor="richard" style="width: 50%"></div>
+                </div>
+                <div class="participant-overlay">
+                  <span class="participant-name">Richard Branson</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="participant" data-investor="daniel" data-state="live">
+              <div class="participant-video">
+                <img class="participant-img" src="images/sharks/robert_herjavec.jpg" alt="Robert Herjavec">
+                <div class="confidence-bar-container">
+                  <div class="confidence-bar" data-investor="daniel" style="width: 50%"></div>
+                </div>
+                <div class="participant-overlay">
+                  <span class="participant-name">Robert Herjavec</span>
+                  <span class="participant-badge badge--live">LIVE</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Featured Speaker -->
+          <div class="featured-video">
+            <video class="featured-webcam" id="userWebcamMain" autoplay muted playsinline></video>
+            <div class="featured-content" id="featuredAvatarContainer">
+              <div class="featured-avatar">YOU</div>
+            </div>
+            <div class="featured-name-badge">You (Founder)</div>
+            <div class="featured-caption" id="featuredCaption">
+              <span class="caption-text" id="captionText">Waiting for you to speak...</span>
+              <span class="caption-listening" id="captionListening">
+                <span class="listening-dot"></span>
+                Listening
+              </span>
+            </div>
+          </div>
+
+          <!-- Bottom Controls -->
+          <div class="controls-bar">
+            <div class="controls-left">
+              <div class="meeting-id">
+                <span>stk-a8x2-qr9</span>
+                <button class="copy-btn" title="Copy meeting ID">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="controls-center">
+              <button class="control-btn" id="cameraToggleBtn" title="Turn off camera">
+                <svg class="camera-on-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 7l-7 5 7 5V7z"/>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                </svg>
+                <svg class="camera-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                  <path d="M16.5 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h13.5"/>
+                  <path d="M23 7l-7 5 7 5V7z"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="controls-right">
+              <button class="transcript-toggle-btn" id="transcriptToggle" title="View Transcript">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </button>
+              <button class="end-pitch-btn" id="endPitchBtn">End Pitch</button>
+            </div>
+          </div>
+        </main>
+
+        <!-- Chat Panel -->
+        <aside class="chat-panel">
+          <div class="chat-header">
+            <div class="chat-tabs">
+              <button class="chat-tab chat-tab--active" id="chatTabBtn" data-tab="chat">Chat</button>
+              <button class="chat-tab" id="offersTabBtn" data-tab="offers">
+                Offers
+                <span class="offers-badge" id="offersBadge" style="display: none;">0</span>
+              </button>
+              <button class="chat-tab chat-tab--end" id="endPitchTabBtn">End Pitch</button>
+            </div>
+          </div>
+
+          <!-- Input Area - At top for easy access -->
+          <div class="chat-input-area">
+            <div class="response-guidance" id="responseGuidance">
+              <span class="guidance-hint">💬 Type below or 🎤 hold mic to speak</span>
+              <button class="guidance-close" id="guidanceCloseBtn">&times;</button>
+            </div>
+            <!-- Mobile user preview -->
+            <div class="mobile-user-preview" id="mobileUserPreview">
+              <video class="mobile-user-webcam" id="mobileUserWebcam" autoplay muted playsinline></video>
+              <div class="mobile-user-avatar" id="mobileUserAvatar">YOU</div>
+            </div>
+            <button class="record-btn" id="recordBtn" title="Hold to record">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+            <input type="text" class="chat-input" id="chatInput" placeholder="Type or press mic to record..." />
+            <button class="send-btn" title="Send">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Live transcript display -->
+          <div class="chat-transcript" id="chatTranscript" style="display: none;">
+            <span class="transcript-label">You said:</span>
+            <span class="transcript-live" id="liveTranscriptText"></span>
+          </div>
+
+          <!-- Chat Messages Tab -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="message message--system">
+              <p class="message-text">The panel has begun. Good luck.</p>
+            </div>
+          </div>
+
+          <!-- Offers Tab -->
+          <div class="offers-panel" id="offersPanel" style="display: none;">
+            <div class="offers-empty" id="offersEmpty">
+              <p>No active offers yet.</p>
+              <p class="offers-hint">When sharks make offers, they'll appear here with a 60-second timer.</p>
+            </div>
+            <div class="offers-list" id="offersList"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Transcript Viewer Panel -->
+    <div class="transcript-panel" id="transcriptPanel" style="display: none;">
+      <div class="transcript-header">
+        <span class="transcript-title">Live Transcript</span>
+        <button class="transcript-close" onclick="window.toggleTranscript()">&times;</button>
+      </div>
+      <div class="transcript-content" id="transcriptContent">
+        <p class="transcript-empty">Your speech will appear here...</p>
+      </div>
+    </div>
+
+    <!-- Counter Offer Modal -->
+    <div class="modal" id="counterOfferModal" style="display: none;">
+      <div class="modal-backdrop" onclick="window.hideCounterModal()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Counter Offer</h3>
+          <button class="modal-close" onclick="window.hideCounterModal()">&times;</button>
+        </div>
+        <p class="modal-subtitle">Make a counter offer to <span id="counterSharkName">the investor</span></p>
+        <input type="hidden" id="counterOfferId" value="">
+        <input type="hidden" id="counterDealType" value="cash_equity">
+
+        <!-- Original offer display -->
+        <div class="original-offer-display" id="originalOfferDisplay">
+          <div class="original-offer-label">Their offer:</div>
+          <div class="original-offer-terms" id="originalOfferTerms">$100,000 for 10%</div>
+        </div>
+
+        <div class="modal-form">
+          <div class="form-group">
+            <label class="form-label" for="counterAmount">Amount you want</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="counterAmount" value="500000" min="1">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="counterEquity">Equity you'll give</label>
+            <div class="input-with-suffix">
+              <input type="number" class="form-input form-input--with-suffix" id="counterEquity" value="10" min="0" max="100">
+              <span class="input-suffix">%</span>
+            </div>
+          </div>
+
+          <!-- Royalty fields - shown for royalty deals -->
+          <div class="form-group royalty-fields" id="royaltyFields" style="display: none;">
+            <label class="form-label" for="counterRoyalty">Royalty per unit</label>
+            <div class="input-with-prefix">
+              <span class="input-prefix">$</span>
+              <input type="number" class="form-input form-input--with-prefix" id="counterRoyalty" value="2" min="0" step="0.5">
+            </div>
+            <p class="form-hint">Amount per unit until investment is recouped</p>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn--cancel" onclick="window.hideCounterModal()">Cancel</button>
+          <button class="btn btn--submit" onclick="window.submitCounterOffer()">Submit Counter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================
+         VIEW: Leaderboard
+         ======================================== -->
+    <div class="view view--leaderboard" id="leaderboardView" style="display: none;">
+      <div class="leaderboard-container">
+        <div class="leaderboard-header">
+          <button class="leaderboard-back" id="leaderboardBackBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Back
+          </button>
+          <h1 class="leaderboard-title">Leaderboard</h1>
+          <div class="leaderboard-tabs">
+            <button class="leaderboard-tab leaderboard-tab--active" data-tab="verified">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Verified
+            </button>
+            <button class="leaderboard-tab" data-tab="all">
+              All Pitches
+            </button>
+          </div>
+        </div>
+
+        <div class="leaderboard-content">
+          <!-- User's rank card (if logged in) -->
+          <div class="leaderboard-user-card" id="leaderboardUserCard" style="display: none;">
+            <span class="user-card-rank" id="userCardRank">#--</span>
+            <img class="user-card-avatar" id="userCardAvatar" src="" alt="You">
+            <div class="user-card-info">
+              <span class="user-card-name" id="userCardName">Your Best</span>
+              <span class="user-card-company" id="userCardCompany">No deals yet</span>
+            </div>
+            <span class="user-card-amount" id="userCardAmount">$0</span>
+          </div>
+
+          <!-- Leaderboard list -->
+          <div class="leaderboard-list" id="leaderboardList">
+            <div class="leaderboard-loading">
+              <div class="loading-spinner"></div>
+              Loading leaderboard...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credits Exhausted Modal -->
+    <div class="modal credits-modal" id="creditsExhaustedModal" style="display: none;">
+      <div class="modal-backdrop" onclick="window.hideCreditsModal()"></div>
+      <div class="modal-content credits-modal-content">
+        <div class="credits-modal-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <h3 class="credits-modal-title">Free Credits Used Up!</h3>
+        <p class="credits-modal-text">
+          You've used your $5 in free credits. Sign up with Twitter to get unlimited access and compete on the leaderboard!
+        </p>
+        <button class="auth-btn auth-btn--twitter" id="modalTwitterLoginBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          Sign up with X (Twitter)
+        </button>
+        <button class="credits-modal-close" onclick="window.hideCreditsModal()">Maybe later</button>
+      </div>
+    </div>
+
+    <!-- Shark Reaction Notifications -->
+    <div class="shark-reactions" id="sharkReactions"></div>
+
+    <!-- Shareable Deal Card Modal -->
+    <div class="deal-card-modal" id="dealCardModal" style="display: none;">
+      <div class="deal-card-backdrop" onclick="window.closeDealCard()"></div>
+      <div class="deal-card-container">
+        <button class="deal-card-close" onclick="window.closeDealCard()">&times;</button>
+
+        <!-- The actual shareable card -->
+        <div class="deal-card" id="dealCard">
+          <div class="deal-card-header">
+            <div class="deal-card-logo">🦈</div>
+            <div class="deal-card-title">SHARK TANK SIMULATOR</div>
+          </div>
+
+          <div class="deal-card-result" id="dealCardResult">
+            <span class="deal-result-label">DEAL!</span>
+          </div>
+
+          <div class="deal-card-company" id="dealCardCompany">Company Name</div>
+
+          <div class="deal-card-terms">
+            <div class="deal-card-amount" id="dealCardAmount">$500,000</div>
+            <div class="deal-card-for">for</div>
+            <div class="deal-card-equity" id="dealCardEquity">10%</div>
+          </div>
+
+          <div class="deal-card-shark">
+            <img class="deal-card-shark-img" id="dealCardSharkImg" src="" alt="Shark">
+            <div class="deal-card-shark-name" id="dealCardSharkName">Mark Cuban</div>
+          </div>
+
+          <div class="deal-card-valuation" id="dealCardValuation">
+            Valuation: $5,000,000
+          </div>
+
+          <div class="deal-card-footer">
+            <span>sharktank.simulator</span>
+            <span class="deal-card-date" id="dealCardDate"></span>
+          </div>
+        </div>
+
+        <!-- Share buttons -->
+        <div class="deal-card-actions">
+          <button class="deal-card-btn deal-card-btn--download" onclick="window.downloadDealCard()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </button>
+          <button class="deal-card-btn deal-card-btn--twitter" onclick="window.shareDealTwitter()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Share on X
+          </button>
+          <button class="deal-card-btn deal-card-btn--copy" onclick="window.copyDealLink()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Copy Link
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-env.js"></script>
+  <script>
+    // Initialize Firebase Auth
+    (function() {
+      try {
+        if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG) {
+          firebase.initializeApp(window.FIREBASE_CONFIG);
+          const auth = firebase.auth();
+          const provider = new firebase.auth.TwitterAuthProvider();
+
+          window.firebaseAuth = {
+            auth: auth,
+            provider: provider,
+            signInWithTwitter: () => auth.signInWithPopup(provider),
+            signOutUser: () => auth.signOut(),
+            onAuthStateChanged: (callback) => auth.onAuthStateChanged(callback),
+            getCurrentUser: () => auth.currentUser
+          };
+        } else {
+          window.firebaseAuth = null;
+        }
+      } catch (err) {
+        console.log('Firebase init error:', err);
+        window.firebaseAuth = null;
+      }
+      window.dispatchEvent(new Event('firebase-ready'));
+    })();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
