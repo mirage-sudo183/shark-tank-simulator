@@ -3648,6 +3648,12 @@
     console.log('[showDealCard] Called with data:', dealData);
     currentDealData = dealData;
 
+    // Hide the ending overlay so it doesn't block the deal card
+    const endingOverlay = document.getElementById('dealClosedOverlay');
+    if (endingOverlay) {
+      endingOverlay.style.display = 'none';
+    }
+
     const modal = document.getElementById('dealCardModal');
     if (!modal) {
       console.error('[showDealCard] Modal not found!');
@@ -3698,6 +3704,11 @@
     const modal = document.getElementById('dealCardModal');
     if (modal) {
       modal.style.display = 'none';
+    }
+    // Show the ending overlay again
+    const endingOverlay = document.getElementById('dealClosedOverlay');
+    if (endingOverlay) {
+      endingOverlay.style.display = 'flex';
     }
   }
 
