@@ -782,32 +782,37 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
     if not responding_sharks:
         return
 
-    # Find who spoke last and pick someone different
-    last_speaker = None
+    # Build list of recent speakers (most recent first)
+    recent_speakers = []
     for msg in reversed(context):
-        if msg.get('isShark'):
-            last_speaker = msg.get('speakerId')
-            break
-
-    # Filter out last speaker, or pick randomly if all have spoken
-    candidates = [(s, c, st) for s, c, st in responding_sharks if s != last_speaker]
-    if not candidates:
-        candidates = responding_sharks
+        if msg.get('isShark') and msg.get('speakerId'):
+            speaker_id = msg.get('speakerId')
+            if speaker_id not in recent_speakers:
+                recent_speakers.append(speaker_id)
 
     # If a shark had proofs satisfied by this message, prioritize them
     shark_with_satisfied_proof = None
     for sid, proofs in proofs_satisfied.items():
-        if proofs and any(s[0] == sid for s in candidates):
+        if proofs and any(s[0] == sid for s in responding_sharks):
             shark_with_satisfied_proof = sid
             break
 
     if shark_with_satisfied_proof:
         shark_id = shark_with_satisfied_proof
-        confidence = next(c for s, c, st in candidates if s == shark_id)
-        shark_state = next(st for s, c, st in candidates if s == shark_id)
+        confidence = next(c for s, c, st in responding_sharks if s == shark_id)
+        shark_state = next(st for s, c, st in responding_sharks if s == shark_id)
     else:
-        # Pick one shark (weighted by confidence)
-        shark_id, confidence, shark_state = random.choice(candidates)
+        # Round-robin: pick shark who spoke least recently (or never)
+        # Sort candidates by how recently they spoke (never spoken = priority)
+        def speaker_recency(shark_tuple):
+            sid = shark_tuple[0]
+            if sid in recent_speakers:
+                return recent_speakers.index(sid)  # Lower index = more recent = lower priority
+            return 999  # Never spoken = highest priority
+
+        # Sort by recency (descending - least recent first), then by confidence
+        sorted_candidates = sorted(responding_sharks, key=lambda x: (-speaker_recency(x), -x[1]))
+        shark_id, confidence, shark_state = sorted_candidates[0]
 
     # Get belief state for this shark
     belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
