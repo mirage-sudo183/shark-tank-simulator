@@ -1664,7 +1664,7 @@ body {
   .chat-input-area {
     padding: 10px;
     gap: 8px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     flex-shrink: 0;
   }
 
@@ -2528,7 +2528,7 @@ body {
 
 .chat-input-area {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   padding: 12px;
   border-top: 1px solid #27272a;
