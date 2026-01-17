@@ -58,7 +58,7 @@
   // ========================================
   const INITIAL_CREDITS = 5.00; // $5 in free credits
   const COST_PER_PITCH = 0.50; // ~$0.50 per pitch session
-  const CREDITS_STORAGE_KEY = 'shark_tank_credits';
+  const CREDITS_STORAGE_KEY = 'pitchtank_credits';
 
   function getCredits() {
     const stored = localStorage.getItem(CREDITS_STORAGE_KEY);
