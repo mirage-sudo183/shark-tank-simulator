@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shark Tank Simulator — Practice Your Pitch with AI Investors</title>
+  <meta name="description" content="Pitch your startup to 5 AI-powered investors inspired by Shark Tank. Get real-time feedback, negotiate deals, and sharpen your pitch skills.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Shark Tank Simulator">
+  <meta property="og:description" content="Pitch your startup to AI investors. Get deals or get destroyed.">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --shark-blue-deep: #0A1628;
+      --shark-blue-dark: #122A4A;
+      --gold-rich: #D4AF37;
+      --gold-bright: #FFD700;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Source Sans Pro', -apple-system, sans-serif;
+      background: linear-gradient(180deg, #050A12 0%, #0D1B2A 50%, var(--shark-blue-deep) 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Hero Section */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 20px;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(212, 175, 55, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(37, 99, 235, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      background: rgba(212, 175, 55, 0.15);
+      border: 1px solid var(--gold-rich);
+      color: var(--gold-bright);
+      padding: 8px 20px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 32px;
+      letter-spacing: 0.05em;
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(64px, 12vw, 120px);
+      line-height: 0.9;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      letter-spacing: 0.02em;
+    }
+
+    .hero-title span {
+      color: var(--gold-bright);
+      text-shadow: 0 0 40px rgba(255, 215, 0, 0.5);
+    }
+
+    .hero-subtitle {
+      font-size: clamp(18px, 3vw, 24px);
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin-bottom: 48px;
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 64px;
+    }
+
+    .btn {
+      padding: 16px 32px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn--primary {
+      background: linear-gradient(135deg, var(--gold-rich) 0%, #F59E0B 100%);
+      color: #000;
+      border: none;
+      box-shadow: 0 4px 24px rgba(212, 175, 55, 0.4);
+    }
+
+    .btn--primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(212, 175, 55, 0.5);
+    }
+
+    .btn--secondary {
+      background: transparent;
+      color: var(--text-primary);
+      border: 2px solid var(--text-secondary);
+    }
+
+    .btn--secondary:hover {
+      border-color: var(--gold-rich);
+      color: var(--gold-bright);
+    }
+
+    /* Shark Avatars */
+    .sharks-preview {
+      display: flex;
+      gap: -12px;
+      margin-bottom: 16px;
+    }
+
+    .shark-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 3px solid var(--shark-blue-deep);
+      margin-left: -12px;
+      object-fit: cover;
+    }
+
+    .shark-avatar:first-child {
+      margin-left: 0;
+    }
+
+    .sharks-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Features Section */
+    .features {
+      padding: 100px 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .features-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 64px;
+      color: var(--text-primary);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+    }
+
+    .feature-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      border-color: var(--gold-rich);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+
+    .feature-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .feature-desc {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* How It Works */
+    .how-it-works {
+      padding: 100px 20px;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .how-it-works-inner {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .how-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 48px;
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .step {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 64px;
+      color: var(--gold-rich);
+      line-height: 1;
+      min-width: 80px;
+    }
+
+    .step-content h3 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .step-content p {
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Social Proof */
+    .social-proof {
+      padding: 80px 20px;
+      text-align: center;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 64px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px;
+      color: var(--gold-bright);
+    }
+
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 16px;
+    }
+
+    /* Final CTA */
+    .final-cta {
+      padding: 100px 20px;
+      text-align: center;
+      background: linear-gradient(180deg, transparent 0%, rgba(212, 175, 55, 0.05) 100%);
+    }
+
+    .final-cta h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px;
+      margin-bottom: 24px;
+    }
+
+    .final-cta p {
+      color: var(--text-secondary);
+      font-size: 20px;
+      margin-bottom: 40px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    footer a {
+      color: var(--gold-rich);
+      text-decoration: none;
+    }
+
+    /* Mobile */
+    @media (max-width: 600px) {
+      .hero-cta {
+        flex-direction: column;
+        width: 100%;
+        padding: 0 20px;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .step {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .step-number {
+        min-width: auto;
+      }
+
+      .stats {
+        gap: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-badge">AI-POWERED PITCH SIMULATOR</div>
+
+    <h1 class="hero-title">
+      PITCH TO<br><span>THE SHARKS</span>
+    </h1>
+
+    <p class="hero-subtitle">
+      5 AI investors. One pitch. Real-time negotiation.
+      Practice your startup pitch and see if you can close a deal.
+    </p>
+
+    <div class="hero-cta">
+      <a href="index.html" class="btn btn--primary">
+        Enter the Tank
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+      <a href="#how-it-works" class="btn btn--secondary">
+        How It Works
+      </a>
+    </div>
+
+    <div class="sharks-preview">
+      <img class="shark-avatar" src="images/sharks/marc_cuban.jpg" alt="Mark Cuban">
+      <img class="shark-avatar" src="images/sharks/kevin_oleary.jpg" alt="Kevin O'Leary">
+      <img class="shark-avatar" src="images/sharks/lori_greiner.jpg" alt="Lori Greiner">
+      <img class="shark-avatar" src="images/sharks/richard_branson.jpg" alt="Richard Branson">
+      <img class="shark-avatar" src="images/sharks/robert_herjavec.jpg" alt="Robert Herjavec">
+    </div>
+    <p class="sharks-label">Meet your investors</p>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features">
+    <h2 class="features-title">Why Pitch Here?</h2>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3 class="feature-title">Real-Time AI Reactions</h3>
+        <p class="feature-desc">Each shark has unique personality, investment thesis, and deal preferences. Watch their confidence shift as you pitch.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3 class="feature-title">Negotiate Deals</h3>
+        <p class="feature-desc">Get offers, counter-offer, and close deals. Handle SAFE notes, royalty deals, and equity negotiations.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎤</div>
+        <h3 class="feature-title">Voice-Powered</h3>
+        <p class="feature-desc">Speak your pitch naturally. AI sharks respond with their own voices. It's like a real pitch meeting.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3 class="feature-title">Confidence Tracking</h3>
+        <p class="feature-desc">See real-time confidence bars. Know exactly when a shark is interested—or about to go out.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🏆</div>
+        <h3 class="feature-title">Leaderboard</h3>
+        <p class="feature-desc">Compete with other founders. Best valuations and deal terms rise to the top.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <h3 class="feature-title">Unlimited Practice</h3>
+        <p class="feature-desc">Refine your pitch. Try different approaches. Learn what resonates with investors.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works" id="how-it-works">
+    <div class="how-it-works-inner">
+      <h2 class="how-title">How It Works</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">01</div>
+          <div class="step-content">
+            <h3>Enter Your Company Details</h3>
+            <p>Tell us about your startup—what it does, how much you're raising, and what traction you have.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">02</div>
+          <div class="step-content">
+            <h3>Deliver Your Pitch</h3>
+            <p>Present to the panel. Speak naturally or type. The sharks are listening and forming opinions.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">03</div>
+          <div class="step-content">
+            <h3>Answer Questions</h3>
+            <p>Handle the Q&A. Defend your valuation. Address concerns. Build confidence.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-number">04</div>
+          <div class="step-content">
+            <h3>Close the Deal</h3>
+            <p>Get offers from interested sharks. Negotiate terms. Accept a deal—or walk away.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Social Proof -->
+  <section class="social-proof">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">10K+</div>
+        <div class="stat-label">Pitches Delivered</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">$2.5B</div>
+        <div class="stat-label">In Virtual Deals</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">4.8★</div>
+        <div class="stat-label">User Rating</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <h2>Ready to Face the Sharks?</h2>
+    <p>Your pitch is waiting. Will you get a deal?</p>
+    <a href="index.html" class="btn btn--primary">
+      Start Your Pitch
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </a>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>Built for founders who want to sharpen their pitch. <a href="https://github.com/mirage-sudo183/shark-tank-simulator">Open Source</a></p>
+  </footer>
+
+</body>
+</html>
