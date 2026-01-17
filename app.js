@@ -3340,6 +3340,8 @@
   }
 
   function showDealClosed(data) {
+    console.log('[showDealClosed] Called with data:', JSON.stringify(data, null, 2));
+
     // Prevent duplicate overlays
     if (document.querySelector('.ending-overlay--success')) {
       console.log('Deal overlay already shown, skipping duplicate');
@@ -3643,10 +3645,14 @@
   let currentDealData = null;
 
   function showDealCard(dealData) {
+    console.log('[showDealCard] Called with data:', dealData);
     currentDealData = dealData;
 
     const modal = document.getElementById('dealCardModal');
-    if (!modal) return;
+    if (!modal) {
+      console.error('[showDealCard] Modal not found!');
+      return;
+    }
 
     // Populate card data
     const companyName = pitchData?.companyName || 'Your Company';
@@ -3696,8 +3702,12 @@
   }
 
   async function downloadDealCard() {
+    console.log('[downloadDealCard] Called');
     const card = document.getElementById('dealCard');
-    if (!card) return;
+    if (!card) {
+      console.error('[downloadDealCard] Card element not found!');
+      return;
+    }
 
     try {
       // Use html2canvas if available, otherwise create a simple canvas
@@ -3770,7 +3780,11 @@
   }
 
   function shareDealTwitter() {
-    if (!currentDealData) return;
+    console.log('[shareDealTwitter] Called, currentDealData:', currentDealData);
+    if (!currentDealData) {
+      console.error('[shareDealTwitter] No deal data available!');
+      return;
+    }
 
     const companyName = pitchData?.companyName || 'my company';
     const amount = currentDealData.offer?.amount || 0;
