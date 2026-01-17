@@ -1425,7 +1425,7 @@ body {
   border-bottom: 1px solid var(--surface-4);
   background: rgba(0, 0, 0, 0.2);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .chat-input {
