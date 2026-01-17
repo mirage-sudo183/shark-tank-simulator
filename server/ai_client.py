@@ -175,44 +175,51 @@ End your response with one of these tags to indicate your action:
         Generate dialogue for a shark making an offer with specific pre-determined terms.
         This ensures the spoken offer matches the panel exactly.
         """
-        if not self.client:
-            # Fallback with exact terms
-            amount = offer_terms.get('amount', 0)
-            equity = offer_terms.get('equity', 0)
-            return f"I'll give you ${amount:,} for {equity}% equity. [ACTION: IMMEDIATE_OFFER]"
-
         company_name = pitch_data.get('companyName', 'the company')
         amount = offer_terms.get('amount', 0)
         equity = offer_terms.get('equity', 0)
         deal_type = offer_terms.get('deal_type', 'cash_equity')
         conditions = offer_terms.get('conditions', [])
         royalty = offer_terms.get('royalty')
+        safe_cap = offer_terms.get('terms', {}).get('cap') if isinstance(offer_terms.get('terms'), dict) else None
 
-        # Build terms description
-        terms_desc = f"${amount:,} for {equity}%"
-        if royalty:
-            terms_desc += f" plus ${royalty} per unit royalty"
-        if conditions:
-            terms_desc += f" with conditions: {', '.join(conditions)}"
+        # Build terms description based on deal type
+        if deal_type == 'safe_cap' or deal_type == 'safe_milestone':
+            if safe_cap:
+                terms_desc = f"${amount:,} SAFE note with a ${safe_cap:,} cap"
+            else:
+                terms_desc = f"${amount:,} SAFE note"
+            if conditions:
+                terms_desc += f" that converts when you {conditions[0].lower()}"
+        elif deal_type == 'royalty' or royalty:
+            terms_desc = f"${amount:,} for {equity}% equity plus ${royalty} per unit royalty"
+        else:
+            # Default cash_equity
+            terms_desc = f"${amount:,} for {equity}% equity"
+            if conditions:
+                terms_desc += f", but you need to {conditions[0].lower()} first"
+
+        if not self.client:
+            # Fallback with exact terms
+            return f"I'll give you {terms_desc}. [ACTION: {'CONDITIONAL_OFFER' if conditions else 'IMMEDIATE_OFFER'}]"
 
         context_str = self._format_context(context) if context else ""
 
         user_prompt = f"""You are making an offer on Shark Tank for {company_name}.
 
-YOUR OFFER TERMS (use these EXACT numbers):
-- Amount: ${amount:,}
-- Equity: {equity}%
-{f'- Royalty: ${royalty} per unit' if royalty else ''}
-{f'- Conditions: {", ".join(conditions)}' if conditions else ''}
-- Deal type: {deal_type}
+YOUR EXACT OFFER (state these terms precisely):
+{terms_desc}
+
+Deal type: {deal_type}
+{f'Conditions: {", ".join(conditions)}' if conditions else ''}
 
 RECENT CONVERSATION:
 {context_str}
 
 Generate a 1-2 sentence offer statement in your character's voice.
-You MUST state the exact offer terms: ${amount:,} for {equity}%.
+You MUST state the EXACT offer: {terms_desc}
 Be enthusiastic but authentic to your personality.
-Do NOT change the numbers - use exactly ${amount:,} for {equity}%.
+Do NOT change the numbers or terms.
 
 End with [ACTION: {'CONDITIONAL_OFFER' if conditions else 'IMMEDIATE_OFFER'}]"""
 
