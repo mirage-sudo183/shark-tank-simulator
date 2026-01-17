@@ -3785,26 +3785,56 @@
   }
 
   function copyDealLink() {
+    console.log('[copyDealLink] Called, currentDealData:', currentDealData);
+
     const companyName = pitchData?.companyName || 'company';
     const amount = currentDealData?.offer?.amount || 0;
     const equity = currentDealData?.offer?.equity || 0;
 
     const shareText = `🦈 Check out my Shark Tank Simulator deal: $${amount.toLocaleString()} for ${equity}% of ${companyName}! Try it at ${window.location.href}`;
 
-    navigator.clipboard.writeText(shareText).then(() => {
-      // Show feedback
-      const btn = document.querySelector('.deal-card-btn--copy');
-      if (btn) {
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<span style="color: #22c55e;">✓ Copied!</span>';
-        setTimeout(() => {
-          btn.innerHTML = originalText;
-        }, 2000);
-      }
-    }).catch(err => {
-      console.error('Failed to copy:', err);
-      alert('Failed to copy to clipboard');
-    });
+    console.log('[copyDealLink] Share text:', shareText);
+
+    // Try clipboard API first, fall back to execCommand
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        showCopySuccess();
+      }).catch(err => {
+        console.error('Clipboard API failed:', err);
+        fallbackCopy(shareText);
+      });
+    } else {
+      fallbackCopy(shareText);
+    }
+  }
+
+  function fallbackCopy(text) {
+    // Fallback for older browsers or non-HTTPS
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      showCopySuccess();
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      alert('Copy failed. Please copy manually:\n\n' + text);
+    }
+    document.body.removeChild(textarea);
+  }
+
+  function showCopySuccess() {
+    const btn = document.querySelector('.deal-card-btn--copy');
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span style="color: #22c55e;">✓ Copied!</span>';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 2000);
+    }
   }
 
   function showDealSummary() {
