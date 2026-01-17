@@ -1,29 +1,33 @@
 /* ========================================
-   Shark Tank Simulator — Video Call UI
-   Authentic Shark Tank TV Show Aesthetic
-   Deep ocean blues, gold accents, dramatic lighting
+   PitchTank — Video Call UI
+   Premium dark aesthetic with gold accents
+   Superdesign-inspired elegance
    ======================================== */
 
-/* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Source+Sans+Pro:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+/* Google Fonts - Playfair Display (elegant serif) + Inter (clean sans) */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 
 /* ========================================
    Design System Variables
    ======================================== */
 :root {
-  /* === PRIMARY OCEAN BLUES === */
-  --shark-blue-deep: #0A1628;
-  --shark-blue-dark: #122A4A;
-  --shark-blue-mid: #1E3A5A;
-  --shark-blue-accent: #2563EB;
-  --shark-blue-glow: #3B82F6;
-  --shark-blue-light: #60A5FA;
+  /* === PRIMARY DARKS === */
+  --bg-deep: #050505;
+  --bg-card: #111111;
+  --bg-elevated: #1a1a1a;
+  --shark-blue-deep: #0a0a0a;
+  --shark-blue-dark: #111111;
+  --shark-blue-mid: #1a1a1a;
+  --shark-blue-accent: #D4AF37;
+  --shark-blue-glow: #FFD700;
+  --shark-blue-light: #FFE55C;
 
   /* === MONEY GOLD === */
   --gold-rich: #D4AF37;
   --gold-bright: #FFD700;
   --gold-amber: #F59E0B;
   --gold-dark: #92702B;
+  --accent-warm: #FF6B35;
 
   /* === DEAL STATUS === */
   --deal-green: #10B981;
@@ -31,34 +35,49 @@
   --danger-red: #DC2626;
   --danger-red-deep: #7F1D1D;
 
-  /* === SURFACES (with blue undertones) === */
-  --surface-0: #050A12;
-  --surface-1: #0D1B2A;
-  --surface-2: #1B2838;
-  --surface-3: #243447;
-  --surface-4: #334155;
+  /* === SURFACES (deep blacks) === */
+  --surface-0: #050505;
+  --surface-1: #0a0a0a;
+  --surface-2: #111111;
+  --surface-3: #1a1a1a;
+  --surface-4: #252525;
 
   /* === TEXT HIERARCHY === */
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --text-muted: #475569;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --text-muted: #52525B;
 
   /* === TYPOGRAPHY === */
-  --font-display: 'Bebas Neue', 'Impact', sans-serif;
-  --font-body: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* === SHADOWS === */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6), 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.5);
 
   /* === GLOW EFFECTS === */
   --glow-gold: 0 0 20px rgba(212, 175, 55, 0.4), 0 0 40px rgba(212, 175, 55, 0.2);
-  --glow-blue: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 40px rgba(59, 130, 246, 0.2);
+  --glow-blue: 0 0 20px rgba(212, 175, 55, 0.3), 0 0 40px rgba(212, 175, 55, 0.15);
   --glow-green: 0 0 20px rgba(16, 185, 129, 0.4), 0 0 40px rgba(16, 185, 129, 0.2);
   --glow-red: 0 0 20px rgba(220, 38, 38, 0.4), 0 0 40px rgba(220, 38, 38, 0.2);
+}
+
+/* ========================================
+   Global Noise Overlay
+   ======================================== */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.03;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
 
 /* Reset */
@@ -76,10 +95,15 @@ html, body {
 body {
   font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text-primary);
-  background: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 50%, var(--shark-blue-deep) 100%);
+  background: var(--bg-deep);
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--gold-rich);
+  color: #000;
 }
 
 /* App Container */
@@ -88,19 +112,18 @@ body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 30%, var(--shark-blue-deep) 100%);
+  background: var(--bg-deep);
   position: relative;
 }
 
-/* Subtle underwater ambient effect */
+/* Subtle atmospheric ambient effect */
 .app::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(37, 99, 235, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(37, 99, 235, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(212, 175, 55, 0.03) 0%, transparent 60%);
+    radial-gradient(ellipse at 20% 30%, rgba(212, 175, 55, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(255, 107, 53, 0.04) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -129,7 +152,7 @@ body {
   justify-content: center;
   padding: 40px 20px;
   overflow-y: auto;
-  background: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 100%);
+  background: var(--bg-deep);
   position: relative;
   z-index: 1;
 }
@@ -141,34 +164,35 @@ body {
 
 .entry-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .entry-logo {
   width: 56px;
   height: 56px;
-  margin: 0 auto 16px;
-  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
-  border-radius: 14px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--surface-0);
-  box-shadow: var(--glow-gold);
+  color: #000;
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3);
 }
 
 .entry-title {
-  font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 400;
-  letter-spacing: 0.05em;
+  font-family: var(--font-serif);
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .entry-subtitle {
-  font-size: 14px;
+  font-size: 15px;
   color: var(--text-tertiary);
+  font-weight: 300;
 }
 
 /* Form */
@@ -219,19 +243,19 @@ body {
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--text-primary);
-  background-color: var(--surface-2);
-  border: 1px solid var(--surface-4);
-  border-radius: 8px;
-  padding: 10px 12px;
+  background-color: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .form-input:focus,
 .form-textarea:focus,
 .form-select:focus {
-  border-color: var(--shark-blue-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--gold-rich);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
 }
 
 .form-input::placeholder,
@@ -303,23 +327,23 @@ body {
 
 /* Submit button */
 .entry-submit {
-  margin-top: 12px;
-  padding: 14px 24px;
+  margin-top: 16px;
+  padding: 16px 32px;
   font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--surface-0);
-  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  font-size: 16px;
+  font-weight: 600;
+  color: #000;
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
   border: none;
-  border-radius: 8px;
+  border-radius: 100px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 24px rgba(212, 175, 55, 0.3);
 }
 
 .entry-submit:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--glow-gold), var(--shadow-lg);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.5);
 }
 
 .entry-submit:active {
@@ -469,10 +493,10 @@ body {
 }
 
 .meeting-title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
@@ -1058,17 +1082,17 @@ body {
 
 .control-btn:hover {
   background-color: var(--surface-3);
-  border-color: var(--shark-blue-light);
+  border-color: var(--gold-dark);
 }
 
 .control-btn--active {
-  background: linear-gradient(135deg, var(--shark-blue-accent) 0%, #1D4ED8 100%);
-  border-color: var(--shark-blue-accent);
-  box-shadow: var(--glow-blue);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  border-color: var(--gold-rich);
+  box-shadow: var(--glow-gold);
 }
 
 .control-btn--active:hover {
-  background: linear-gradient(135deg, #1D4ED8 0%, var(--shark-blue-accent) 100%);
+  background: linear-gradient(135deg, var(--gold-amber) 0%, var(--gold-rich) 100%);
 }
 
 .control-btn--muted {
@@ -1357,9 +1381,9 @@ body {
 
 /* Founder (You) messages — right-aligned, distinct */
 .message--you {
-  background: rgba(37, 99, 235, 0.1);
+  background: rgba(212, 175, 55, 0.08);
   border-left: none;
-  border-right: 2px solid var(--shark-blue-accent);
+  border-right: 2px solid var(--gold-rich);
   border-radius: 6px 0 0 6px;
   margin-left: 32px;
   text-align: right;
@@ -1370,7 +1394,7 @@ body {
 }
 
 .message--you .message-author {
-  color: var(--shark-blue-light);
+  color: var(--gold-rich);
 }
 
 .message--you .message-text {
@@ -1423,28 +1447,28 @@ body {
 }
 
 .chat-input:focus {
-  border-color: var(--shark-blue-accent);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--gold-rich);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
 }
 
 .send-btn {
   width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, var(--shark-blue-accent) 0%, #1D4ED8 100%);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
+  color: var(--bg-deep);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
 }
 
 .send-btn:hover {
   transform: translateY(-1px);
-  box-shadow: var(--glow-blue);
+  box-shadow: var(--glow-gold);
 }
 
 /* Scrollbar */
@@ -1652,8 +1676,8 @@ body {
     font-size: 12px;
     margin-bottom: 0;
     border-radius: 8px;
-    background: rgba(37, 99, 235, 0.1);
-    border: 1px solid rgba(37, 99, 235, 0.3);
+    background: rgba(212, 175, 55, 0.08);
+    border: 1px solid rgba(212, 175, 55, 0.25);
   }
 
   /* Mobile user preview - show yourself */
@@ -1664,8 +1688,8 @@ body {
     height: 48px;
     border-radius: 50%;
     overflow: hidden;
-    border: 2px solid var(--shark-blue-accent);
-    box-shadow: var(--glow-blue);
+    border: 2px solid var(--gold-rich);
+    box-shadow: var(--glow-gold);
     flex-shrink: 0;
     background: var(--surface-2);
   }
@@ -1685,8 +1709,8 @@ body {
     justify-content: center;
     font-size: 10px;
     font-weight: 700;
-    color: var(--text-primary);
-    background: linear-gradient(135deg, var(--shark-blue-accent) 0%, var(--shark-blue-dark) 100%);
+    color: var(--bg-deep);
+    background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-dark) 100%);
   }
 
   /* Hide avatar when webcam is active */
@@ -1944,15 +1968,15 @@ body {
    User Messages
    ======================================== */
 .message--user {
-  background: rgba(37, 99, 235, 0.15);
-  border-left: 2px solid var(--shark-blue-accent);
+  background: rgba(212, 175, 55, 0.1);
+  border-left: 2px solid var(--gold-rich);
   border-radius: 0 8px 8px 0;
   padding: 8px 12px;
   margin-left: 20px;
 }
 
 .message--user .message-author {
-  color: var(--shark-blue-light);
+  color: var(--gold-rich);
 }
 
 /* ========================================
@@ -2347,14 +2371,14 @@ body {
 }
 
 .btn--submit {
-  background: linear-gradient(135deg, var(--shark-blue-accent) 0%, #1D4ED8 100%);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
+  color: var(--bg-deep);
   box-shadow: var(--shadow-sm);
 }
 
 .btn--submit:hover {
   transform: translateY(-1px);
-  box-shadow: var(--glow-blue);
+  box-shadow: var(--glow-gold);
 }
 
 /* ========================================
@@ -2381,10 +2405,10 @@ body {
 }
 
 .transcript-toggle-btn.active {
-  background: linear-gradient(135deg, var(--shark-blue-accent) 0%, #1D4ED8 100%);
-  border-color: var(--shark-blue-accent);
-  color: var(--text-primary);
-  box-shadow: var(--glow-blue);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  border-color: var(--gold-rich);
+  color: var(--bg-deep);
+  box-shadow: var(--glow-gold);
 }
 
 .transcript-panel {
@@ -2762,7 +2786,7 @@ body {
    ======================================== */
 
 .view--auth {
-  background: linear-gradient(180deg, var(--surface-0) 0%, var(--surface-1) 100%);
+  background: var(--bg-deep);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -2776,13 +2800,13 @@ body {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at 30% 70%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 30%, rgba(37, 99, 235, 0.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 30% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 70%, rgba(255, 107, 53, 0.05) 0%, transparent 50%);
   pointer-events: none;
 }
 
 .auth-container {
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
   text-align: center;
   position: relative;
@@ -2790,41 +2814,42 @@ body {
 }
 
 .auth-header {
-  margin-bottom: 40px;
+  margin-bottom: 48px;
 }
 
 .auth-logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 88px;
-  height: 88px;
-  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
-  border-radius: 22px;
-  margin-bottom: 24px;
-  color: var(--surface-0);
-  box-shadow: var(--glow-gold);
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
+  border-radius: 20px;
+  margin-bottom: 28px;
+  color: #000;
+  box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3);
 }
 
 .auth-title {
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 400;
-  letter-spacing: 0.08em;
+  font-family: var(--font-serif);
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .auth-subtitle {
   font-size: 16px;
   color: var(--text-tertiary);
+  font-weight: 300;
 }
 
 .auth-content {
-  background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-0) 100%);
-  border: 1px solid var(--surface-4);
-  border-radius: 16px;
-  padding: 32px;
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 36px;
   margin-bottom: 24px;
   box-shadow: var(--shadow-lg);
 }
@@ -2835,25 +2860,23 @@ body {
   justify-content: center;
   gap: 12px;
   width: 100%;
-  padding: 14px 24px;
+  padding: 16px 24px;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 100px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .auth-btn--twitter {
-  background: var(--surface-2);
-  color: var(--text-primary);
-  border: 1px solid var(--surface-4);
+  background: var(--text-primary);
+  color: var(--bg-deep);
 }
 
 .auth-btn--twitter:hover {
-  background: var(--surface-3);
-  border-color: var(--shark-blue-accent);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
 }
 
 .auth-btn--twitter:disabled {
@@ -2865,15 +2888,17 @@ body {
   font-size: 13px;
   color: var(--text-tertiary);
   margin-top: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .auth-divider {
   display: flex;
   align-items: center;
-  margin: 24px 0;
+  margin: 28px 0;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 .auth-divider::before,
@@ -2881,7 +2906,7 @@ body {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--surface-4);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .auth-divider span {
@@ -2891,18 +2916,19 @@ body {
 .auth-btn--guest {
   background: transparent;
   color: var(--text-secondary);
-  border: 1px solid var(--surface-4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .auth-btn--guest:hover {
-  background: var(--surface-3);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--gold-rich);
   color: var(--text-primary);
 }
 
 .auth-guest-note {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 8px;
+  margin-top: 12px;
 }
 
 /* Auth logged-in state */
@@ -3701,14 +3727,14 @@ body {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, var(--shark-blue-accent) 0%, #1D4ED8 100%);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--accent-warm) 100%);
+  color: var(--bg-deep);
   box-shadow: var(--shadow-sm);
 }
 
 .btn--primary:hover {
   transform: translateY(-1px);
-  box-shadow: var(--glow-blue);
+  box-shadow: var(--glow-gold);
 }
 
 .btn--primary:disabled {
@@ -3900,11 +3926,11 @@ body {
 }
 
 .demo-end-cta {
-  background: linear-gradient(135deg, var(--shark-blue-accent), #1D4ED8);
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--gold-rich), var(--accent-warm));
+  color: var(--bg-deep);
   border: none;
   padding: 14px 28px;
-  border-radius: 8px;
+  border-radius: 100px;
   font-family: var(--font-body);
   font-size: 16px;
   font-weight: 700;
@@ -3918,7 +3944,7 @@ body {
 
 .demo-end-cta:hover {
   transform: translateY(-2px);
-  box-shadow: var(--glow-blue);
+  box-shadow: var(--glow-gold);
 }
 
 .demo-end-cta .x-logo {
