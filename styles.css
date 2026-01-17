@@ -5029,3 +5029,99 @@ a,
     justify-content: center;
   }
 }
+
+/* ========================================
+   Pitch Guidance Overlay
+   ======================================== */
+
+.pitch-guidance-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.3s ease;
+}
+
+.pitch-guidance-overlay.fading {
+  animation: fadeOut 0.5s ease forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+.pitch-guidance-content {
+  text-align: center;
+  padding: 48px;
+  max-width: 400px;
+  animation: scaleIn 0.4s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pitch-guidance-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.pitch-guidance-title {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--gold-bright);
+  margin: 0 0 16px 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.pitch-guidance-text {
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.pitch-guidance-hint {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  margin: 0 0 32px 0;
+}
+
+.pitch-guidance-hint strong {
+  color: var(--gold-rich);
+}
+
+.pitch-guidance-btn {
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  color: #000;
+  border: none;
+  padding: 14px 40px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pitch-guidance-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
+}

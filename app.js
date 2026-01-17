@@ -1421,6 +1421,35 @@
 
     // Update phase indicator
     updatePhaseIndicator();
+
+    // Show pitch guidance to user
+    showPitchGuidance();
+  }
+
+  /**
+   * Show pitch phase guidance overlay
+   */
+  function showPitchGuidance() {
+    const guidance = document.createElement('div');
+    guidance.className = 'pitch-guidance-overlay';
+    guidance.innerHTML = `
+      <div class="pitch-guidance-content">
+        <div class="pitch-guidance-icon">🎤</div>
+        <h2 class="pitch-guidance-title">You're Live!</h2>
+        <p class="pitch-guidance-text">The sharks are watching. Make your pitch.</p>
+        <p class="pitch-guidance-hint">Click <strong>"End Pitch"</strong> when you're done to start Q&A.</p>
+        <button class="pitch-guidance-btn" onclick="this.closest('.pitch-guidance-overlay').remove()">Got it!</button>
+      </div>
+    `;
+    document.body.appendChild(guidance);
+
+    // Auto-dismiss after 6 seconds
+    setTimeout(() => {
+      if (guidance.parentNode) {
+        guidance.classList.add('fading');
+        setTimeout(() => guidance.remove(), 500);
+      }
+    }, 6000);
   }
 
   // ========================================
