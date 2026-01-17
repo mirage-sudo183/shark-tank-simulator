@@ -321,7 +321,8 @@ CONFIDENCE_THRESHOLDS = {
     'offer': 70,      # Shark will make offer when confidence >= this
     'out': 25,        # Shark will go out when confidence < this
     'recovery': 35,   # Clear "flagged for out" if confidence recovers above this
-    'return': 50      # Shark who went OUT can return if confidence >= this
+    'return': 70,     # Shark who went OUT can return if confidence >= this (very hard)
+    'return_delta': 15  # Minimum confidence jump in one message to trigger return
 }
 POST_OFFER_SENSITIVITY = 0.5  # Confidence changes are multiplied by this after making offer
 
@@ -1063,10 +1064,10 @@ class SharkManager:
             # Calculate new confidence
             new_confidence = max(0, min(100, current_confidence + adjusted_delta))
 
-            # Check if OUT shark can return
+            # Check if OUT shark can return (requires high confidence AND big delta)
             should_return = False
             if current_status == 'out':
-                should_return = self.check_shark_return(shark_id, new_confidence, shark_data)
+                should_return = self.check_shark_return(shark_id, new_confidence, adjusted_delta, shark_data)
 
             # Evaluate flags (only for live sharks or returning sharks)
             if current_status == 'live' or should_return:
@@ -1084,20 +1085,28 @@ class SharkManager:
 
         return results
 
-    def check_shark_return(self, shark_id, confidence, shark_state):
+    def check_shark_return(self, shark_id, confidence, delta, shark_state):
         """
         Check if a shark who went OUT can return to the deal.
         Returns True if shark should come back.
+
+        Requires BOTH:
+        - Confidence >= 70 (return threshold)
+        - Delta >= 15 in a single message (significant positive shift)
         """
         # Only check if shark is actually out
         if shark_state.get('status') != 'out':
             return False
 
-        # Return if confidence has risen above return threshold
-        if confidence >= CONFIDENCE_THRESHOLDS['return']:
-            return True
+        # Must have confidence above return threshold
+        if confidence < CONFIDENCE_THRESHOLDS['return']:
+            return False
 
-        return False
+        # Must have a significant positive delta in this message
+        if delta < CONFIDENCE_THRESHOLDS.get('return_delta', 15):
+            return False
+
+        return True
 
     def get_return_message(self, shark_id):
         """Get a message for when a shark returns to the deal."""
