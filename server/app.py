@@ -519,16 +519,34 @@ def generate_initial_reactions(session_id):
         # Get belief state for this shark
         belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
 
-        # Generate response with belief state
-        response = ai_client.generate_shark_response(
-            shark_id=shark_id,
-            persona=shark_manager.get_persona(shark_id),
-            pitch_data=pitch_data,
-            transcript=transcript,
-            context=session.get('qaTranscript', []),
-            confidence=confidence,
-            belief_state=belief_state.to_dict() if belief_state else None
-        )
+        # Check if shark should make an offer based on confidence (flagged_for_offer)
+        shark_state = session_manager.get_shark_state(session_id, shark_id)
+        should_offer = shark_state.get('flagged_for_offer', False) or confidence >= 70
+
+        offer = None
+        if should_offer and belief_state:
+            # Generate offer terms FIRST so the spoken dialogue matches
+            offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+
+            # Generate dialogue with EXACT offer terms
+            response = ai_client.generate_offer_dialogue(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                offer_terms=offer,
+                pitch_data=pitch_data,
+                context=session.get('qaTranscript', [])
+            )
+        else:
+            # Generate regular response (question, comment, etc.)
+            response = ai_client.generate_shark_response(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                pitch_data=pitch_data,
+                transcript=transcript,
+                context=session.get('qaTranscript', []),
+                confidence=confidence,
+                belief_state=belief_state.to_dict() if belief_state else None
+            )
 
         if response:
             # Parse structured response to extract action type and clean content
@@ -549,14 +567,6 @@ def generate_initial_reactions(session_id):
 
             # Check if shark is going out
             is_going_out = parsed['is_rejection']
-
-            # Generate offer based on action type and belief state
-            offer = None
-            if not is_going_out and parsed['is_offer']:
-                if belief_state:
-                    offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
-                else:
-                    offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
 
             # IMPORTANT: Register the offer BEFORE sending SSE event so IDs match
             if offer:
