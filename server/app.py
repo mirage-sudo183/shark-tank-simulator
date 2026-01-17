@@ -519,16 +519,34 @@ def generate_initial_reactions(session_id):
         # Get belief state for this shark
         belief_state = session_manager.get_shark_belief_state(session_id, shark_id)
 
-        # Generate response with belief state
-        response = ai_client.generate_shark_response(
-            shark_id=shark_id,
-            persona=shark_manager.get_persona(shark_id),
-            pitch_data=pitch_data,
-            transcript=transcript,
-            context=session.get('qaTranscript', []),
-            confidence=confidence,
-            belief_state=belief_state.to_dict() if belief_state else None
-        )
+        # Check if shark should make an offer based on confidence (flagged_for_offer)
+        shark_state = session_manager.get_shark_state(session_id, shark_id)
+        should_offer = shark_state.get('flagged_for_offer', False) or confidence >= 70
+
+        offer = None
+        if should_offer and belief_state:
+            # Generate offer terms FIRST so the spoken dialogue matches
+            offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
+
+            # Generate dialogue with EXACT offer terms
+            response = ai_client.generate_offer_dialogue(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                offer_terms=offer,
+                pitch_data=pitch_data,
+                context=session.get('qaTranscript', [])
+            )
+        else:
+            # Generate regular response (question, comment, etc.)
+            response = ai_client.generate_shark_response(
+                shark_id=shark_id,
+                persona=shark_manager.get_persona(shark_id),
+                pitch_data=pitch_data,
+                transcript=transcript,
+                context=session.get('qaTranscript', []),
+                confidence=confidence,
+                belief_state=belief_state.to_dict() if belief_state else None
+            )
 
         if response:
             # Parse structured response to extract action type and clean content
@@ -549,14 +567,6 @@ def generate_initial_reactions(session_id):
 
             # Check if shark is going out
             is_going_out = parsed['is_rejection']
-
-            # Generate offer based on action type and belief state
-            offer = None
-            if not is_going_out and parsed['is_offer']:
-                if belief_state:
-                    offer = shark_manager.generate_structured_offer(shark_id, pitch_data, belief_state, confidence)
-                else:
-                    offer = shark_manager.parse_offer_from_response(shark_id, response, pitch_data, confidence)
 
             # IMPORTANT: Register the offer BEFORE sending SSE event so IDs match
             if offer:
@@ -782,32 +792,37 @@ def generate_shark_responses_to_user(session_id, user_message, proofs_satisfied=
     if not responding_sharks:
         return
 
-    # Find who spoke last and pick someone different
-    last_speaker = None
+    # Build list of recent speakers (most recent first)
+    recent_speakers = []
     for msg in reversed(context):
-        if msg.get('isShark'):
-            last_speaker = msg.get('speakerId')
-            break
-
-    # Filter out last speaker, or pick randomly if all have spoken
-    candidates = [(s, c, st) for s, c, st in responding_sharks if s != last_speaker]
-    if not candidates:
-        candidates = responding_sharks
+        if msg.get('isShark') and msg.get('speakerId'):
+            speaker_id = msg.get('speakerId')
+            if speaker_id not in recent_speakers:
+                recent_speakers.append(speaker_id)
 
     # If a shark had proofs satisfied by this message, prioritize them
     shark_with_satisfied_proof = None
     for sid, proofs in proofs_satisfied.items():
-        if proofs and any(s[0] == sid for s in candidates):
+        if proofs and any(s[0] == sid for s in responding_sharks):
             shark_with_satisfied_proof = sid
             break
 
     if shark_with_satisfied_proof:
         shark_id = shark_with_satisfied_proof
-        confidence = next(c for s, c, st in candidates if s == shark_id)
-        shark_state = next(st for s, c, st in candidates if s == shark_id)
+        confidence = next(c for s, c, st in responding_sharks if s == shark_id)
+        shark_state = next(st for s, c, st in responding_sharks if s == shark_id)
     else:
-        # Pick one shark (weighted by confidence)
-        shark_id, confidence, shark_state = random.choice(candidates)
+        # Round-robin: pick shark who spoke least recently (or never)
+        # Sort candidates by how recently they spoke (never spoken = priority)
+        def speaker_recency(shark_tuple):
+            sid = shark_tuple[0]
+            if sid in recent_speakers:
+                return recent_speakers.index(sid)  # Lower index = more recent = lower priority
+            return 999  # Never spoken = highest priority
+
+        # Sort by recency (descending - least recent first), then by confidence
+        sorted_candidates = sorted(responding_sharks, key=lambda x: (-speaker_recency(x), -x[1]))
+        shark_id, confidence, shark_state = sorted_candidates[0]
 
     # Get belief state for this shark
     belief_state = session_manager.get_shark_belief_state(session_id, shark_id)

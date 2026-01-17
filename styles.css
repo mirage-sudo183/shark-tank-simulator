@@ -818,6 +818,53 @@ body {
   box-shadow: var(--glow-gold);
 }
 
+/* Confidence Bar - Shows shark interest level */
+.confidence-bar-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 3;
+  overflow: hidden;
+}
+
+.confidence-bar {
+  height: 100%;
+  width: 50%;
+  background: linear-gradient(90deg, var(--gold-amber) 0%, var(--deal-green) 100%);
+  transition: width 0.5s ease-out, background 0.3s ease;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+/* Confidence bar color states */
+.confidence-bar.low {
+  background: linear-gradient(90deg, var(--danger-red) 0%, #F87171 100%);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.5);
+}
+
+.confidence-bar.medium {
+  background: linear-gradient(90deg, var(--gold-amber) 0%, var(--gold-bright) 100%);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.confidence-bar.high {
+  background: linear-gradient(90deg, var(--deal-green) 0%, var(--deal-green-glow) 100%);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+/* Pulse animation when confidence changes significantly */
+.confidence-bar.pulse {
+  animation: confidenceBarPulse 0.5s ease-out;
+}
+
+@keyframes confidenceBarPulse {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.5); }
+  100% { filter: brightness(1); }
+}
+
 /* Featured Video */
 .featured-video {
   flex: 1;
@@ -2621,6 +2668,30 @@ body {
   box-shadow: 0 0 30px rgba(212, 175, 55, 0.6), 0 0 60px rgba(212, 175, 55, 0.3);
 }
 
+.ending-overlay--success .ending-btn--share {
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  margin-bottom: 12px;
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ending-overlay--success .ending-btn--secondary {
+  background: transparent;
+  border: 1px solid var(--surface-4);
+  color: var(--text-secondary);
+  font-weight: 500;
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.ending-overlay--success .ending-btn--secondary:hover {
+  background: var(--surface-3);
+  box-shadow: none;
+}
+
 /* Deal Details */
 .deal-details {
   background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
@@ -4349,13 +4420,10 @@ a,
 
 /* Credits Banner (Panel View) */
 .credits-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
+  position: relative;
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   padding: 8px 16px;
+  z-index: 50;
 }
 
 .credits-banner-content {
@@ -4544,4 +4612,516 @@ a,
   100% {
     transform: scale(1);
   }
+}
+
+/* ========================================
+   Shark Reaction Notifications
+   ======================================== */
+.shark-reactions {
+  position: fixed;
+  top: 80px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+  max-width: 320px;
+  pointer-events: none;
+}
+
+.shark-reaction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--surface-1) 0%, var(--surface-0) 100%);
+  border: 1px solid var(--surface-4);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  animation: reactionSlideIn 0.4s ease-out;
+  pointer-events: auto;
+}
+
+.shark-reaction.exiting {
+  animation: reactionSlideOut 0.3s ease-in forwards;
+}
+
+@keyframes reactionSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reactionSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+}
+
+.shark-reaction-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--surface-4);
+}
+
+.shark-reaction-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shark-reaction-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.shark-reaction-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.shark-reaction-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.shark-reaction-emoji {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+/* Reaction type variants */
+.shark-reaction.positive {
+  border-left: 3px solid var(--deal-green);
+}
+
+.shark-reaction.negative {
+  border-left: 3px solid var(--danger-red);
+}
+
+.shark-reaction.interested {
+  border-left: 3px solid var(--gold-rich);
+}
+
+.shark-reaction.skeptical {
+  border-left: 3px solid var(--shark-blue-accent);
+}
+
+/* Mobile positioning */
+@media (max-width: 600px) {
+  .shark-reactions {
+    top: auto;
+    bottom: 200px;
+    right: 8px;
+    left: 8px;
+    max-width: none;
+  }
+
+  .shark-reaction {
+    padding: 10px 12px;
+  }
+
+  .shark-reaction-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .shark-reaction-text {
+    font-size: 13px;
+  }
+
+  .shark-reaction-emoji {
+    font-size: 20px;
+  }
+}
+
+/* ========================================
+   Shareable Deal Card
+   ======================================== */
+.deal-card-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.deal-card-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.deal-card-container {
+  position: relative;
+  z-index: 10; /* Above backdrop */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 100%;
+}
+
+.deal-card-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 32px;
+  cursor: pointer;
+  padding: 8px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.deal-card-close:hover {
+  color: var(--text-primary);
+}
+
+/* The actual card */
+.deal-card {
+  width: 400px;
+  max-width: 100%;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5a 50%, #0f172a 100%);
+  border: 2px solid var(--gold-rich);
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+  box-shadow:
+    0 0 40px rgba(212, 175, 55, 0.3),
+    0 20px 60px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative background effect */
+.deal-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.1) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.deal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.deal-card-logo {
+  font-size: 28px;
+}
+
+.deal-card-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--text-secondary);
+}
+
+.deal-card-result {
+  margin-bottom: 16px;
+}
+
+.deal-result-label {
+  font-family: var(--font-display);
+  font-size: 48px;
+  letter-spacing: 0.1em;
+  background: linear-gradient(135deg, var(--gold-bright) 0%, var(--gold-rich) 50%, var(--gold-amber) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 40px rgba(212, 175, 55, 0.5);
+}
+
+.deal-card-result.no-deal .deal-result-label {
+  background: linear-gradient(135deg, var(--danger-red) 0%, #F87171 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.deal-card-company {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+
+.deal-card-terms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.deal-card-amount {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--gold-bright);
+}
+
+.deal-card-for {
+  font-size: 16px;
+  color: var(--text-tertiary);
+}
+
+.deal-card-equity {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.deal-card-shark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.deal-card-shark-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--gold-rich);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+.deal-card-shark-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.deal-card-valuation {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--shark-blue-light);
+  margin-bottom: 20px;
+}
+
+.deal-card-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 16px;
+  border-top: 1px solid var(--surface-4);
+}
+
+/* Share action buttons */
+.deal-card-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.deal-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.deal-card-btn--download {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--surface-4);
+}
+
+.deal-card-btn--download:hover {
+  background: var(--surface-3);
+}
+
+.deal-card-btn--twitter {
+  background: #000;
+  color: #fff;
+}
+
+.deal-card-btn--twitter:hover {
+  background: #333;
+}
+
+.deal-card-btn--copy {
+  background: var(--shark-blue-accent);
+  color: #fff;
+}
+
+.deal-card-btn--copy:hover {
+  background: var(--shark-blue-glow);
+}
+
+/* Mobile deal card */
+@media (max-width: 500px) {
+  .deal-card {
+    padding: 24px 20px;
+  }
+
+  .deal-card-title {
+    font-size: 12px;
+  }
+
+  .deal-result-label {
+    font-size: 36px;
+  }
+
+  .deal-card-company {
+    font-size: 22px;
+  }
+
+  .deal-card-amount,
+  .deal-card-equity {
+    font-size: 26px;
+  }
+
+  .deal-card-shark-img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .deal-card-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .deal-card-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   Pitch Guidance Overlay
+   ======================================== */
+
+.pitch-guidance-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.3s ease;
+}
+
+.pitch-guidance-overlay.fading {
+  animation: fadeOut 0.5s ease forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+.pitch-guidance-content {
+  text-align: center;
+  padding: 48px;
+  max-width: 400px;
+  animation: scaleIn 0.4s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pitch-guidance-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.pitch-guidance-title {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--gold-bright);
+  margin: 0 0 16px 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+}
+
+.pitch-guidance-text {
+  font-size: 18px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.pitch-guidance-hint {
+  font-size: 16px;
+  color: var(--text-tertiary);
+  margin: 0 0 32px 0;
+}
+
+.pitch-guidance-hint strong {
+  color: var(--gold-rich);
+}
+
+.pitch-guidance-btn {
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  color: #000;
+  border: none;
+  padding: 14px 40px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pitch-guidance-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.4);
 }
