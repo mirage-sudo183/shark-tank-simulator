@@ -3031,6 +3031,143 @@ body {
   color: var(--gold-rich);
 }
 
+/* Google auth button */
+.auth-btn--google {
+  background: #ffffff;
+  color: #3c4043;
+  margin-top: 12px;
+}
+
+.auth-btn--google:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+  background: #f8f9fa;
+}
+
+.auth-btn--google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Email auth button */
+.auth-btn--email {
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
+  color: var(--surface-0);
+  margin-top: 8px;
+}
+
+.auth-btn--email:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--glow-gold);
+}
+
+.auth-btn--email:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Email section container */
+.auth-email-section {
+  margin-top: 8px;
+}
+
+/* Email tabs */
+.auth-email-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--surface-2);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.auth-email-tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.auth-email-tab:hover {
+  color: var(--text-secondary);
+  background: var(--surface-3);
+}
+
+.auth-email-tab--active {
+  background: var(--surface-4);
+  color: var(--text-primary);
+}
+
+/* Email forms */
+.auth-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-form-input {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--surface-2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+}
+
+.auth-form-input:focus {
+  border-color: var(--gold-rich);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+.auth-form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Magic link hint */
+.auth-magic-hint {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* Auth messages */
+.auth-message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.auth-error {
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #fca5a5;
+}
+
+.auth-success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
 /* ========================================
    USER BAR (Entry Form)
    ======================================== */

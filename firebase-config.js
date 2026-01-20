@@ -7,6 +7,13 @@ import {
   signInWithPopup,
   signOut,
   TwitterAuthProvider,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  updateProfile,
   onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import {
@@ -38,8 +45,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Twitter Auth Provider
+// Auth Providers
 const twitterProvider = new TwitterAuthProvider();
+const googleProvider = new GoogleAuthProvider();
 
 // Current user state
 let currentUser = null;
@@ -111,6 +119,219 @@ async function signInWithTwitter() {
     return { user: currentUser, twitterHandle };
   } catch (error) {
     console.error('Twitter sign-in error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sign in with Google
+ * @returns {Promise<{user: object}>}
+ */
+async function signInWithGoogle() {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    // Create or update user document in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    const userData = {
+      email: user.email,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      provider: 'google',
+      lastLoginAt: serverTimestamp()
+    };
+
+    if (!userDoc.exists()) {
+      // New user
+      userData.createdAt = serverTimestamp();
+      userData.pitchesThisWeek = 0;
+      userData.verifications = {};
+      await setDoc(userRef, userData);
+    } else {
+      // Existing user - update last login
+      await updateDoc(userRef, userData);
+    }
+
+    currentUser = {
+      uid: user.uid,
+      ...userData
+    };
+
+    return { user: currentUser };
+  } catch (error) {
+    console.error('Google sign-in error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Register with email and password
+ * @param {string} email
+ * @param {string} password
+ * @param {string} displayName
+ * @returns {Promise<{user: object}>}
+ */
+async function registerWithEmail(email, password, displayName) {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const user = result.user;
+
+    // Update profile with display name
+    await updateProfile(user, { displayName });
+
+    // Create user document in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    const userData = {
+      email: user.email,
+      displayName: displayName,
+      photoURL: null,
+      provider: 'email',
+      createdAt: serverTimestamp(),
+      lastLoginAt: serverTimestamp(),
+      pitchesThisWeek: 0,
+      verifications: {}
+    };
+
+    await setDoc(userRef, userData);
+
+    currentUser = {
+      uid: user.uid,
+      ...userData
+    };
+
+    return { user: currentUser };
+  } catch (error) {
+    console.error('Email registration error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sign in with email and password
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{user: object}>}
+ */
+async function signInWithEmail(email, password) {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    const user = result.user;
+
+    // Get or create user document in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    const userData = {
+      email: user.email,
+      displayName: user.displayName || email.split('@')[0],
+      photoURL: user.photoURL,
+      provider: 'email',
+      lastLoginAt: serverTimestamp()
+    };
+
+    if (!userDoc.exists()) {
+      userData.createdAt = serverTimestamp();
+      userData.pitchesThisWeek = 0;
+      userData.verifications = {};
+      await setDoc(userRef, userData);
+    } else {
+      await updateDoc(userRef, userData);
+    }
+
+    currentUser = {
+      uid: user.uid,
+      ...userData
+    };
+
+    return { user: currentUser };
+  } catch (error) {
+    console.error('Email sign-in error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Send magic link email for passwordless sign-in
+ * @param {string} email
+ * @returns {Promise<void>}
+ */
+async function sendMagicLink(email) {
+  const actionCodeSettings = {
+    url: window.location.origin + window.location.pathname,
+    handleCodeInApp: true
+  };
+
+  try {
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    // Save the email locally to complete sign-in when user returns
+    window.localStorage.setItem('emailForSignIn', email);
+  } catch (error) {
+    console.error('Magic link error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Complete magic link sign-in (called when user returns from email link)
+ * @returns {Promise<{user: object}|null>}
+ */
+async function completeMagicLinkSignIn() {
+  if (!isSignInWithEmailLink(auth, window.location.href)) {
+    return null;
+  }
+
+  let email = window.localStorage.getItem('emailForSignIn');
+  if (!email) {
+    // User opened the link on a different device
+    email = window.prompt('Please provide your email for confirmation');
+  }
+
+  if (!email) {
+    throw new Error('Email is required to complete sign-in');
+  }
+
+  try {
+    const result = await signInWithEmailLink(auth, email, window.location.href);
+    const user = result.user;
+
+    // Clear the email from storage
+    window.localStorage.removeItem('emailForSignIn');
+
+    // Clean up the URL
+    window.history.replaceState(null, '', window.location.pathname);
+
+    // Create or update user document in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+
+    const userData = {
+      email: user.email,
+      displayName: user.displayName || email.split('@')[0],
+      photoURL: user.photoURL,
+      provider: 'email_link',
+      lastLoginAt: serverTimestamp()
+    };
+
+    if (!userDoc.exists()) {
+      userData.createdAt = serverTimestamp();
+      userData.pitchesThisWeek = 0;
+      userData.verifications = {};
+      await setDoc(userRef, userData);
+    } else {
+      await updateDoc(userRef, userData);
+    }
+
+    currentUser = {
+      uid: user.uid,
+      ...userData
+    };
+
+    return { user: currentUser };
+  } catch (error) {
+    console.error('Magic link sign-in error:', error);
     throw error;
   }
 }
@@ -256,6 +477,11 @@ export {
   auth,
   db,
   signInWithTwitter,
+  signInWithGoogle,
+  registerWithEmail,
+  signInWithEmail,
+  sendMagicLink,
+  completeMagicLinkSignIn,
   signOutUser,
   getIdToken,
   onAuthChange,
