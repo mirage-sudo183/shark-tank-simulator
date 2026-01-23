@@ -148,7 +148,7 @@ body {
    ======================================== */
 .view--entry {
   display: flex;
-  align-items: safe center;
+  align-items: flex-start;
   justify-content: center;
   padding: 40px 20px;
   overflow-y: auto;
@@ -160,6 +160,8 @@ body {
 .entry-container {
   width: 100%;
   max-width: 480px;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 .entry-header {
@@ -368,51 +370,6 @@ body {
 .entry-skip:hover {
   border-color: var(--text-tertiary);
   color: var(--text-secondary);
-}
-
-/* Quick Test Section */
-.quick-test-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px dashed var(--surface-4);
-}
-
-.quick-test-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 10px;
-  text-align: center;
-}
-
-.quick-test-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.quick-test-select {
-  flex: 1;
-  padding: 10px 12px;
-  font-family: var(--font-body);
-  font-size: 13px;
-  color: var(--text-primary);
-  background-color: var(--surface-2);
-  border: 1px solid var(--surface-4);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.quick-test-select:focus {
-  outline: none;
-  border-color: var(--gold-rich);
-}
-
-.quick-test-select option {
-  background-color: var(--surface-2);
-  color: var(--text-primary);
 }
 
 /* ========================================
@@ -1829,8 +1786,6 @@ body {
   .entry-container {
     padding: 16px;
     margin: 8px;
-    max-height: 95vh;
-    overflow-y: auto;
   }
 
   .entry-header h1 {
