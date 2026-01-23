@@ -305,6 +305,177 @@ def update_user_verification(user_id, verification_type, verification_data):
     })
 
 
+# ============ Challenge Functions (Phase 3) ============
+
+def save_challenge_to_firestore(challenge_data):
+    """
+    Save a new challenge to Firestore.
+
+    Args:
+        challenge_data: Dict with challenge details including:
+            - creatorUserId: Firebase user ID
+            - creatorTwitterHandle: Twitter handle
+            - pitchData: The pitch data to replicate
+            - creatorResult: The creator's outcome
+
+    Returns:
+        str: The challenge document ID
+    """
+    db = get_firestore()
+    if db is None:
+        raise RuntimeError("Firestore not available")
+
+    import time
+    challenge_ref = db.collection('challenges').document()
+
+    challenge_doc = {
+        'id': challenge_ref.id,
+        'creatorUserId': challenge_data.get('creatorUserId'),
+        'creatorTwitterHandle': challenge_data.get('creatorTwitterHandle', 'anonymous'),
+        'pitchData': challenge_data.get('pitchData', {}),
+        'creatorResult': challenge_data.get('creatorResult', {}),
+        'attempts': [],
+        'createdAt': firestore.SERVER_TIMESTAMP,
+        'expiresAt': int(time.time() * 1000) + (7 * 24 * 60 * 60 * 1000)  # 7 days
+    }
+
+    challenge_ref.set(challenge_doc)
+    return challenge_ref.id
+
+
+def get_challenge_from_firestore(challenge_id):
+    """
+    Get a challenge by ID.
+
+    Args:
+        challenge_id: The challenge document ID
+
+    Returns:
+        dict: Challenge data or None if not found
+    """
+    db = get_firestore()
+    if db is None:
+        return None
+
+    challenge_ref = db.collection('challenges').document(challenge_id)
+    challenge_doc = challenge_ref.get()
+
+    if challenge_doc.exists:
+        return challenge_doc.to_dict()
+    return None
+
+
+def add_attempt_to_challenge(challenge_id, attempt_data):
+    """
+    Add an attempt to a challenge.
+
+    Args:
+        challenge_id: The challenge document ID
+        attempt_data: Dict with attempt details including:
+            - userId: Firebase user ID (optional)
+            - twitterHandle: Twitter handle (optional)
+            - result: The attempt's outcome
+
+    Returns:
+        bool: True if successful
+    """
+    db = get_firestore()
+    if db is None:
+        raise RuntimeError("Firestore not available")
+
+    import time
+    challenge_ref = db.collection('challenges').document(challenge_id)
+    challenge_doc = challenge_ref.get()
+
+    if not challenge_doc.exists:
+        return False
+
+    attempt = {
+        'userId': attempt_data.get('userId'),
+        'twitterHandle': attempt_data.get('twitterHandle', 'anonymous'),
+        'result': attempt_data.get('result', {}),
+        'completedAt': int(time.time() * 1000)
+    }
+
+    challenge_ref.update({
+        'attempts': firestore.ArrayUnion([attempt])
+    })
+    return True
+
+
+# ============ Weekly Leaderboard Functions (Phase 4) ============
+
+def get_weekly_leaderboard(verified_only=True, limit_count=50):
+    """
+    Get leaderboard entries for the current week.
+
+    Args:
+        verified_only: If True, only return verified pitches
+        limit_count: Maximum entries to return
+
+    Returns:
+        list: Leaderboard entries for this week, sorted by deal amount
+    """
+    db = get_firestore()
+    if db is None:
+        return []
+
+    import time
+    from datetime import datetime, timedelta
+
+    # Calculate start of current week (Monday 00:00 UTC)
+    now = datetime.utcnow()
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start_ms = int(start_of_week.timestamp() * 1000)
+
+    pitches_ref = db.collection('pitches')
+
+    # Query for successful deals this week
+    query = pitches_ref.where('outcome.result', '==', 'deal')
+
+    # Note: Firestore requires composite index for multiple where clauses
+    # For now, filter by week in application code
+    query = query.order_by('outcome.dealAmount', direction=firestore.Query.DESCENDING)
+    query = query.limit(limit_count * 2)  # Get extra to filter by week
+
+    docs = query.stream()
+    entries = []
+
+    for doc in docs:
+        data = doc.to_dict()
+        created_at = data.get('createdAt')
+
+        # Convert Firestore timestamp to milliseconds
+        if hasattr(created_at, 'timestamp'):
+            created_at_ms = int(created_at.timestamp() * 1000)
+        elif isinstance(created_at, (int, float)):
+            created_at_ms = int(created_at)
+        else:
+            continue
+
+        # Filter by week
+        if created_at_ms < week_start_ms:
+            continue
+
+        # Filter by verification if requested
+        if verified_only:
+            verification = data.get('verification', {})
+            if verification.get('type') == 'unverified':
+                continue
+
+        entries.append(data)
+
+        if len(entries) >= limit_count:
+            break
+
+    # Add ranks
+    for i, entry in enumerate(entries):
+        entry['rank'] = i + 1
+
+    return entries
+
+
 # Initialize on import if env vars are set
 if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS') or os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON'):
     initialize_firebase()

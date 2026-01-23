@@ -1684,6 +1684,13 @@
         // Show response guidance on first shark message
         showResponseGuidance();
 
+        // Check for memorable/shareable quotes
+        const quoteData = detectShareableQuote(event.data.sharkId, event.data.sharkName, event.data.text);
+        if (quoteData) {
+          capturedQuotes.push(quoteData);
+          showQuoteShareToast(quoteData);
+        }
+
         // Play TTS audio if available
         if (event.data.audio || event.data.duration) {
           playSharkAudio(event.data.audio, event.data.sharkId, event.data.duration);
@@ -3539,6 +3546,26 @@
     // Store deal data for sharing
     window.lastDealData = data;
 
+    // Record challenge attempt if applicable
+    if (currentChallengeId) {
+      recordChallengeAttempt({
+        outcome: 'deal',
+        dealAmount: offer.amount || 0,
+        dealEquity: offer.equity || 0,
+        sharkId: data.sharkId,
+        sharkName: data.sharkName
+      });
+    }
+
+    // Check daily challenge completion
+    checkDailyChallengeCompletion(pitchData, {
+      result: 'deal',
+      dealAmount: offer.amount || 0,
+      dealEquity: offer.equity || 0,
+      sharkId: data.sharkId,
+      sharkName: data.sharkName
+    });
+
     // Auto-show deal card after 2 seconds
     setTimeout(() => {
       showDealCard(data);
@@ -3805,6 +3832,10 @@
     const sharkId = dealData.sharkId || 'marcus';
     const valuation = equity > 0 ? Math.round(amount / (equity / 100)) : 0;
 
+    // Generate viral hook for display
+    const viralHook = generateViralHook(dealData);
+    currentViralHook = viralHook;
+
     // Update card elements
     const companyEl = document.getElementById('dealCardCompany');
     const amountEl = document.getElementById('dealCardAmount');
@@ -3813,6 +3844,9 @@
     const sharkImgEl = document.getElementById('dealCardSharkImg');
     const valuationEl = document.getElementById('dealCardValuation');
     const dateEl = document.getElementById('dealCardDate');
+    const viralHookEl = document.getElementById('dealCardViralHook');
+    const quoteEl = document.getElementById('dealCardQuote');
+    const weeklyRankEl = document.getElementById('dealCardWeeklyRank');
 
     if (companyEl) companyEl.textContent = companyName;
     if (amountEl) amountEl.textContent = `$${amount.toLocaleString()}`;
@@ -3820,6 +3854,34 @@
     if (sharkNameEl) sharkNameEl.textContent = sharkName;
     if (valuationEl) valuationEl.textContent = `Valuation: $${valuation.toLocaleString()}`;
     if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    // Update viral hook display
+    if (viralHookEl) {
+      viralHookEl.textContent = viralHook.hook;
+      viralHookEl.style.display = 'block';
+    }
+
+    // Update best quote from session
+    if (quoteEl) {
+      const bestQuote = capturedQuotes.length > 0 ? capturedQuotes[capturedQuotes.length - 1] : null;
+      if (bestQuote) {
+        quoteEl.innerHTML = `<span class="quote-text">"${bestQuote.text.slice(0, 100)}${bestQuote.text.length > 100 ? '...' : ''}"</span><span class="quote-author">— ${bestQuote.sharkName}</span>`;
+        quoteEl.style.display = 'block';
+      } else {
+        quoteEl.style.display = 'none';
+      }
+    }
+
+    // Weekly rank badge (will be populated by async call)
+    if (weeklyRankEl) {
+      weeklyRankEl.style.display = 'none';
+      getWeeklyRank(amount).then(rank => {
+        if (rank && rank <= 50) {
+          weeklyRankEl.textContent = `#${rank} This Week`;
+          weeklyRankEl.style.display = 'flex';
+        }
+      }).catch(() => {});
+    }
 
     // Set shark image
     if (sharkImgEl) {
@@ -3835,6 +3897,21 @@
 
     // Show modal
     modal.style.display = 'flex';
+  }
+
+  // Get user's weekly rank (for deal card badge)
+  async function getWeeklyRank(dealAmount) {
+    try {
+      const response = await fetch(`${API_BASE}/api/leaderboard/weekly`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      const entries = data.entries || [];
+      const rank = entries.findIndex(e => (e.outcome?.dealAmount || 0) <= dealAmount) + 1;
+      return rank > 0 ? rank : entries.length + 1;
+    } catch (err) {
+      console.log('[getWeeklyRank] Error:', err);
+      return null;
+    }
   }
 
   function closeDealCard() {
@@ -3927,6 +4004,677 @@
     }
   }
 
+  // ========================================
+  // Viral Hook Generator (Phase 1)
+  // ========================================
+
+  function formatAmount(amount) {
+    if (amount >= 1000000) {
+      return (amount / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    } else if (amount >= 1000) {
+      return (amount / 1000).toFixed(0) + 'K';
+    }
+    return amount.toLocaleString();
+  }
+
+  function generateViralHook(dealData) {
+    const amount = dealData.offer?.amount || 0;
+    const equity = dealData.offer?.equity || 0;
+    const sharkName = dealData.sharkName || 'AI investor';
+    const sharkId = dealData.sharkId || 'marcus';
+    const valuation = equity > 0 ? Math.round(amount / (equity / 100)) : 0;
+    const askAmount = pitchData?.amountRaising || 0;
+    const askEquity = pitchData?.equityPercent || 0;
+    const royalty = dealData.offer?.royalty;
+
+    // Determine which hook type fits best
+    const templates = [];
+
+    // Beat ask hook - if they got more money than asked
+    if (amount > askAmount) {
+      templates.push({
+        type: 'beatAsk',
+        hook: `Asked for $${formatAmount(askAmount)}, got $${formatAmount(amount)} 🤯`,
+        priority: 3
+      });
+    }
+
+    // Better equity hook - if they gave less equity than offered
+    if (askEquity > 0 && equity < askEquity) {
+      templates.push({
+        type: 'betterEquity',
+        hook: `Offered ${askEquity}% equity, only gave up ${equity}% 💰`,
+        priority: 2
+      });
+    }
+
+    // Royalty deal hook - Mr. Wonderful special
+    if (royalty && sharkId === 'victor') {
+      templates.push({
+        type: 'royalty',
+        hook: `Mr. Wonderful gave me a royalty deal. For real. 🤝`,
+        priority: 4
+      });
+    }
+
+    // Big valuation hook
+    if (valuation >= 10000000) {
+      templates.push({
+        type: 'bigValuation',
+        hook: `AI investors valued my startup at $${formatAmount(valuation)} 📈`,
+        priority: 2
+      });
+    }
+
+    // Million dollar deal hook
+    if (amount >= 1000000) {
+      templates.push({
+        type: 'millionDeal',
+        hook: `Just closed a $${formatAmount(amount)} deal with ${sharkName} 🚀`,
+        priority: 3
+      });
+    }
+
+    // Default hook
+    templates.push({
+      type: 'default',
+      hook: `I just raised $${formatAmount(amount)} from AI ${sharkName} 🦈`,
+      priority: 1
+    });
+
+    // Sort by priority and pick the best
+    templates.sort((a, b) => b.priority - a.priority);
+    return templates[0];
+  }
+
+  // Captured quotes from session for sharing
+  let capturedQuotes = [];
+  let currentViralHook = null;
+  let currentQuoteData = null;
+
+  // ========================================
+  // Shareable Shark Quotes (Phase 2)
+  // ========================================
+
+  // Patterns that indicate memorable/shareable quotes
+  const SHAREABLE_QUOTE_PATTERNS = [
+    { pattern: /dead to me/i, type: 'deadToMe', priority: 5 },
+    { pattern: /for that reason,?\s*i'?m out/i, type: 'forThatReason', priority: 5 },
+    { pattern: /i'?m out/i, type: 'imOut', priority: 4 },
+    { pattern: /you'?re dead to me/i, type: 'deadToMe', priority: 5 },
+    { pattern: /you got a deal/i, type: 'gotDeal', priority: 5 },
+    { pattern: /i'?ll give you/i, type: 'offer', priority: 3 },
+    { pattern: /that'?s a (great|fantastic|brilliant|incredible|amazing)/i, type: 'impressed', priority: 4 },
+    { pattern: /i love (this|it|what you)/i, type: 'love', priority: 4 },
+    { pattern: /this is (exactly|precisely) what/i, type: 'exactlyWhat', priority: 4 },
+    { pattern: /you'?re asking for (too much|a lot)/i, type: 'pushback', priority: 3 },
+    { pattern: /valuati?on is (insane|crazy|ridiculous)/i, type: 'valuation', priority: 4 },
+    { pattern: /royalty/i, type: 'royalty', priority: 3 },
+    { pattern: /i believe in you/i, type: 'believe', priority: 4 },
+    { pattern: /this could be (huge|massive|big)/i, type: 'potential', priority: 3 },
+    { pattern: /billion dollar/i, type: 'billion', priority: 5 },
+  ];
+
+  function detectShareableQuote(sharkId, sharkName, text) {
+    // Check against patterns
+    for (const { pattern, type, priority } of SHAREABLE_QUOTE_PATTERNS) {
+      if (pattern.test(text)) {
+        return {
+          sharkId,
+          sharkName,
+          text: text.length > 200 ? text.slice(0, 200) + '...' : text,
+          type,
+          priority,
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    // Also capture any quote that's reasonably short and contains strong language
+    if (text.length > 30 && text.length < 150) {
+      const strongWords = /(!|\?{2,}|absolutely|definitely|never|always|best|worst|incredible|impossible)/i;
+      if (strongWords.test(text)) {
+        return {
+          sharkId,
+          sharkName,
+          text,
+          type: 'strong',
+          priority: 2,
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function showQuoteShareToast(quoteData) {
+    // Remove any existing toast
+    const existingToast = document.getElementById('quoteShareToast');
+    if (existingToast) {
+      existingToast.remove();
+    }
+
+    currentQuoteData = quoteData;
+
+    const toast = document.createElement('div');
+    toast.id = 'quoteShareToast';
+    toast.className = 'quote-share-toast';
+    toast.innerHTML = `
+      <div class="quote-toast-content">
+        <div class="quote-toast-icon">💬</div>
+        <div class="quote-toast-text">
+          <span class="quote-toast-label">Shareable moment!</span>
+          <span class="quote-toast-preview">"${quoteData.text.slice(0, 50)}${quoteData.text.length > 50 ? '...' : ''}"</span>
+        </div>
+        <button class="quote-toast-btn" onclick="window.showQuoteCard()">Share</button>
+        <button class="quote-toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+      </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.classList.add('fading');
+        setTimeout(() => toast.remove(), 500);
+      }
+    }, 8000);
+  }
+
+  function showQuoteCard(quoteData = null) {
+    const quote = quoteData || currentQuoteData;
+    if (!quote) return;
+
+    currentQuoteData = quote;
+
+    const modal = document.getElementById('quoteCardModal');
+    if (!modal) return;
+
+    // Populate quote card
+    const quoteText = document.getElementById('quoteCardText');
+    const quoteSpeaker = document.getElementById('quoteCardSpeaker');
+    const quoteCompany = document.getElementById('quoteCardCompany');
+    const quoteSharkImg = document.getElementById('quoteCardSharkImg');
+
+    if (quoteText) quoteText.textContent = `"${quote.text}"`;
+    if (quoteSpeaker) quoteSpeaker.textContent = `— ${quote.sharkName}`;
+    if (quoteCompany) quoteCompany.textContent = pitchData?.companyName || 'PitchTank Session';
+
+    // Set shark image
+    if (quoteSharkImg) {
+      const sharkImages = {
+        marcus: 'images/sharks/marc_cuban.jpg',
+        victor: 'images/sharks/kevin_oleary.jpg',
+        elena: 'images/sharks/lori_greiner.jpg',
+        richard: 'images/sharks/richard_branson.jpg',
+        daniel: 'images/sharks/robert_herjavec.jpg'
+      };
+      quoteSharkImg.src = sharkImages[quote.sharkId] || sharkImages.marcus;
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeQuoteCard() {
+    const modal = document.getElementById('quoteCardModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  function shareQuoteTwitter() {
+    if (!currentQuoteData) return;
+
+    const quote = currentQuoteData;
+    const companyName = pitchData?.companyName || 'my pitch';
+
+    const tweetText = `🦈 "${quote.text}"\n\n— ${quote.sharkName} on ${companyName}\n\nPitching to AI investors on PitchTank`;
+
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('ref', 'quote');
+
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareUrl.toString())}`;
+
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
+  }
+
+  async function downloadQuoteCard() {
+    const card = document.getElementById('quoteCard');
+    if (!card) return;
+
+    try {
+      if (typeof html2canvas !== 'undefined') {
+        const canvas = await html2canvas(card, {
+          backgroundColor: '#0a0a0a',
+          scale: 2
+        });
+
+        const link = document.createElement('a');
+        link.download = `pitchtank-quote-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        // Fallback: Create canvas manually
+        const canvas = document.createElement('canvas');
+        canvas.width = 600;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+
+        // Background
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(0, 0, 600, 400);
+
+        // Border
+        ctx.strokeStyle = '#D4AF37';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(10, 10, 580, 380);
+
+        // Quote text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'italic 18px Georgia';
+        ctx.textAlign = 'center';
+
+        const quote = currentQuoteData;
+        const lines = wrapText(ctx, `"${quote.text}"`, 500);
+        let y = 120;
+        lines.forEach(line => {
+          ctx.fillText(line, 300, y);
+          y += 28;
+        });
+
+        // Speaker
+        ctx.font = '16px Inter';
+        ctx.fillStyle = '#D4AF37';
+        ctx.fillText(`— ${quote.sharkName}`, 300, y + 30);
+
+        // Footer
+        ctx.font = '12px Inter';
+        ctx.fillStyle = '#71717A';
+        ctx.fillText('pitchtank.ai', 300, 370);
+
+        const link = document.createElement('a');
+        link.download = `pitchtank-quote-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
+    } catch (err) {
+      console.error('Failed to download quote card:', err);
+      alert('Failed to download. Please try taking a screenshot.');
+    }
+  }
+
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    });
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  // Expose quote functions globally
+  window.showQuoteCard = showQuoteCard;
+  window.closeQuoteCard = closeQuoteCard;
+  window.shareQuoteTwitter = shareQuoteTwitter;
+  window.downloadQuoteCard = downloadQuoteCard;
+
+  // ========================================
+  // Challenge a Friend (Phase 3)
+  // ========================================
+
+  let currentChallengeId = null;
+  let currentChallengeData = null;
+
+  // Check for challenge param on page load
+  function checkForChallenge() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const challengeId = urlParams.get('challenge');
+
+    if (challengeId) {
+      loadChallenge(challengeId);
+    }
+  }
+
+  // Load challenge data and show banner
+  async function loadChallenge(challengeId) {
+    try {
+      const response = await fetch(`${API_BASE}/api/challenges/${challengeId}`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      const challenge = data.challenge;
+
+      if (!challenge) return;
+
+      currentChallengeId = challengeId;
+      currentChallengeData = challenge;
+
+      // Show challenge banner
+      const banner = document.getElementById('challengeBanner');
+      if (banner) {
+        const challengerName = document.getElementById('challengerName');
+        const challengerAmount = document.getElementById('challengerAmount');
+
+        if (challengerName) {
+          challengerName.textContent = `@${challenge.creatorTwitterHandle || 'someone'}`;
+        }
+        if (challengerAmount) {
+          const amount = challenge.creatorResult?.dealAmount || 0;
+          challengerAmount.textContent = `$${formatAmount(amount)}`;
+        }
+
+        banner.style.display = 'flex';
+      }
+
+      // Pre-fill form with challenge pitch data (optional - same challenge)
+      const pd = challenge.pitchData;
+      if (pd) {
+        const companyNameEl = document.getElementById('companyName');
+        const amountEl = document.getElementById('amountRaising');
+        const equityEl = document.getElementById('equityPercent');
+        const descEl = document.getElementById('companyDescription');
+        const whyNowEl = document.getElementById('whyNow');
+        const proofTypeEl = document.getElementById('proofType');
+
+        // Only pre-fill if it's the same pitch challenge
+        if (companyNameEl && pd.companyName) companyNameEl.value = pd.companyName;
+        if (amountEl && pd.amountRaising) amountEl.value = pd.amountRaising;
+        if (equityEl && pd.equityPercent) equityEl.value = pd.equityPercent;
+        if (descEl && pd.companyDescription) descEl.value = pd.companyDescription;
+        if (whyNowEl && pd.whyNow) whyNowEl.value = pd.whyNow;
+        if (proofTypeEl && pd.proofType) proofTypeEl.value = pd.proofType;
+
+        // Update character counts
+        if (descEl) {
+          const charCount = document.getElementById('descCharCount');
+          if (charCount) charCount.textContent = descEl.value.length;
+        }
+        if (whyNowEl) {
+          const charCount = document.getElementById('whyNowCharCount');
+          if (charCount) charCount.textContent = whyNowEl.value.length;
+        }
+      }
+
+      console.log('[Challenge] Loaded challenge:', challengeId);
+    } catch (err) {
+      console.error('[Challenge] Failed to load challenge:', err);
+    }
+  }
+
+  // Create a new challenge from completed deal
+  async function createChallenge() {
+    if (!currentDealData) {
+      console.error('[Challenge] No deal data available');
+      return;
+    }
+
+    try {
+      const challengeData = {
+        pitchData: pitchData,
+        creatorResult: {
+          outcome: 'deal',
+          dealAmount: currentDealData.offer?.amount || 0,
+          dealEquity: currentDealData.offer?.equity || 0,
+          sharkId: currentDealData.sharkId,
+          sharkName: currentDealData.sharkName,
+          valuation: currentDealData.offer?.amount && currentDealData.offer?.equity
+            ? Math.round(currentDealData.offer.amount / (currentDealData.offer.equity / 100))
+            : 0
+        }
+      };
+
+      // Get auth token if available
+      const headers = { 'Content-Type': 'application/json' };
+      if (window.firebaseAuth?.auth?.currentUser) {
+        const token = await window.firebaseAuth.auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/api/challenges`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(challengeData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create challenge');
+      }
+
+      const data = await response.json();
+      currentChallengeId = data.challengeId;
+
+      // Share on Twitter with challenge link
+      const challengeUrl = `${window.location.origin}?challenge=${data.challengeId}`;
+      const amount = currentDealData.offer?.amount || 0;
+      const twitterHandle = currentUser?.twitterHandle ? `@${currentUser.twitterHandle}` : 'I';
+
+      const tweetText = `🎯 ${twitterHandle} just raised $${formatAmount(amount)} on PitchTank!\n\nThink you can beat my deal? Take the challenge 👇`;
+
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(challengeUrl)}`;
+
+      window.open(tweetUrl, '_blank', 'width=550,height=420');
+
+    } catch (err) {
+      console.error('[Challenge] Failed to create:', err);
+      alert('Failed to create challenge. Please try again.');
+    }
+  }
+
+  // Record challenge attempt after completing pitch
+  async function recordChallengeAttempt(result) {
+    if (!currentChallengeId) return;
+
+    try {
+      // Get auth token if available
+      const headers = { 'Content-Type': 'application/json' };
+      if (window.firebaseAuth?.auth?.currentUser) {
+        const token = await window.firebaseAuth.auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/api/challenges/${currentChallengeId}/attempt`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ result })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showChallengeComparison(data);
+      }
+    } catch (err) {
+      console.error('[Challenge] Failed to record attempt:', err);
+    }
+  }
+
+  // Show challenge comparison modal
+  function showChallengeComparison(data) {
+    const modal = document.getElementById('challengeComparisonModal');
+    if (!modal) return;
+
+    const { creatorResult, attemptResult, winner } = data;
+
+    // Update creator side
+    const creatorName = document.getElementById('challengeCreatorName');
+    const creatorAmount = document.getElementById('challengeCreatorAmount');
+    const creatorEquity = document.getElementById('challengeCreatorEquity');
+
+    if (creatorName) creatorName.textContent = `@${currentChallengeData?.creatorTwitterHandle || 'Challenger'}`;
+    if (creatorAmount) creatorAmount.textContent = `$${formatAmount(creatorResult?.dealAmount || 0)}`;
+    if (creatorEquity) creatorEquity.textContent = `for ${creatorResult?.dealEquity || 0}%`;
+
+    // Update your side
+    const yourAmount = document.getElementById('challengeYourAmount');
+    const yourEquity = document.getElementById('challengeYourEquity');
+
+    if (yourAmount) yourAmount.textContent = `$${formatAmount(attemptResult?.dealAmount || 0)}`;
+    if (yourEquity) yourEquity.textContent = attemptResult?.dealAmount ? `for ${attemptResult?.dealEquity || 0}%` : 'No deal';
+
+    // Update winner display
+    const winnerEl = document.getElementById('challengeWinner');
+    if (winnerEl) {
+      winnerEl.classList.remove('win', 'lose');
+      if (winner === 'challenger') {
+        winnerEl.textContent = '🏆 You Win! Better deal!';
+        winnerEl.classList.add('win');
+      } else if (winner === 'creator') {
+        winnerEl.textContent = '😢 They Win! Try again?';
+        winnerEl.classList.add('lose');
+      } else {
+        winnerEl.textContent = "🤝 It's a Tie!";
+      }
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeChallengeComparison() {
+    const modal = document.getElementById('challengeComparisonModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  function shareChallengeResult() {
+    if (!currentChallengeData) return;
+
+    const creatorAmount = currentChallengeData.creatorResult?.dealAmount || 0;
+    const yourAmount = currentDealData?.offer?.amount || 0;
+    const won = yourAmount > creatorAmount;
+
+    const tweetText = won
+      ? `🏆 I beat @${currentChallengeData.creatorTwitterHandle}'s PitchTank challenge!\n\nThey raised $${formatAmount(creatorAmount)}, I raised $${formatAmount(yourAmount)}!\n\nThink you can beat me?`
+      : `😤 I took on @${currentChallengeData.creatorTwitterHandle}'s PitchTank challenge!\n\nThey raised $${formatAmount(creatorAmount)}, I raised $${formatAmount(yourAmount)}.\n\nRematch incoming...`;
+
+    const challengeUrl = `${window.location.origin}?challenge=${currentChallengeId}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(challengeUrl)}`;
+
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
+  }
+
+  // Expose challenge functions globally
+  window.createChallenge = createChallenge;
+  window.closeChallengeComparison = closeChallengeComparison;
+  window.shareChallengeResult = shareChallengeResult;
+
+  // ========================================
+  // Daily/Weekly Challenges (Phase 5)
+  // ========================================
+
+  let currentDailyChallenge = null;
+  let dailyChallengeTimerInterval = null;
+
+  // Load and display daily challenge on page load
+  async function loadDailyChallenge() {
+    try {
+      const response = await fetch(`${API_BASE}/api/daily-challenge`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+      currentDailyChallenge = data.challenge;
+
+      if (currentDailyChallenge) {
+        showDailyChallengeBanner(currentDailyChallenge);
+      }
+    } catch (err) {
+      console.log('[DailyChallenge] Failed to load:', err);
+    }
+  }
+
+  function showDailyChallengeBanner(challenge) {
+    const banner = document.getElementById('dailyChallengeBanner');
+    if (!banner) return;
+
+    const badge = document.getElementById('dailyChallengeBadge');
+    const name = document.getElementById('dailyChallengeName');
+    const desc = document.getElementById('dailyChallengeDesc');
+    const timer = document.getElementById('dailyChallengeTimer');
+
+    if (badge) badge.textContent = challenge.badge || '🎯';
+    if (name) name.textContent = challenge.name || 'Daily Challenge';
+    if (desc) desc.textContent = challenge.description || 'Complete today\'s challenge!';
+
+    // Start countdown timer
+    if (timer && challenge.time_remaining_ms) {
+      updateChallengeTimer(timer, challenge.time_remaining_ms);
+      clearInterval(dailyChallengeTimerInterval);
+      dailyChallengeTimerInterval = setInterval(() => {
+        challenge.time_remaining_ms -= 1000;
+        if (challenge.time_remaining_ms <= 0) {
+          clearInterval(dailyChallengeTimerInterval);
+          banner.style.display = 'none';
+          loadDailyChallenge(); // Reload new challenge
+        } else {
+          updateChallengeTimer(timer, challenge.time_remaining_ms);
+        }
+      }, 1000);
+    }
+
+    banner.style.display = 'flex';
+  }
+
+  function updateChallengeTimer(element, ms) {
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+    element.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  // Check if pitch completes daily challenge
+  async function checkDailyChallengeCompletion(pitchData, outcome) {
+    if (!currentDailyChallenge) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/daily-challenge/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pitchData, outcome })
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (data.completed) {
+        showDailyChallengeComplete(data.challenge);
+      }
+    } catch (err) {
+      console.log('[DailyChallenge] Check failed:', err);
+    }
+  }
+
+  function showDailyChallengeComplete(challenge) {
+    // Remove any existing toast
+    const existing = document.querySelector('.daily-challenge-complete');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'daily-challenge-complete';
+    toast.innerHTML = `
+      <div class="daily-challenge-complete-badge">${challenge.badge || '🏆'}</div>
+      <div class="daily-challenge-complete-title">Challenge Complete!</div>
+      <div class="daily-challenge-complete-desc">${challenge.name}</div>
+    `;
+    document.body.appendChild(toast);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      toast.style.animation = 'fadeOut 0.5s ease forwards';
+      setTimeout(() => toast.remove(), 500);
+    }, 4000);
+  }
+
   function shareDealTwitter() {
     console.log('[shareDealTwitter] Called, currentDealData:', currentDealData);
     if (!currentDealData) {
@@ -3939,9 +4687,29 @@
     const equity = currentDealData.offer?.equity || 0;
     const sharkName = currentDealData.sharkName || 'an investor';
 
-    const tweetText = `🦈 I just closed a deal on Shark Tank Simulator!\n\n${sharkName} invested $${amount.toLocaleString()} for ${equity}% of ${companyName}!\n\nThink you can do better? Try it yourself 👇`;
+    // Generate viral hook
+    const viralHook = generateViralHook(currentDealData);
+    currentViralHook = viralHook;
 
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(window.location.href)}`;
+    // Build tweet text with viral hook
+    let tweetText = `🦈 ${viralHook.hook}\n\n`;
+
+    // Add best quote if available
+    const bestQuote = capturedQuotes.length > 0 ? capturedQuotes[capturedQuotes.length - 1] : null;
+    if (bestQuote) {
+      tweetText += `"${bestQuote.text.slice(0, 80)}${bestQuote.text.length > 80 ? '...' : ''}" — ${bestQuote.sharkName}\n\n`;
+    }
+
+    tweetText += `Think you can do better?`;
+
+    // Add challenge URL param for tracking
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('ref', 'twitter');
+    if (currentDealData.offer?.id) {
+      shareUrl.searchParams.set('deal', currentDealData.offer.id);
+    }
+
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(shareUrl.toString())}`;
 
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   }
@@ -4316,6 +5084,10 @@
     initEntryForm();
     initCreditsSystem();
     initAuth();
+    // Check for challenge URL param
+    checkForChallenge();
+    // Load daily challenge
+    loadDailyChallenge();
     // Show auth view first (users can sign in or try free)
     showView('authView');
   }

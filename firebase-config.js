@@ -425,7 +425,7 @@ async function savePitchResult(pitchData, outcome, verification = { type: 'unver
 
 /**
  * Get leaderboard entries
- * @param {string} type - 'verified' or 'unverified'
+ * @param {string} type - 'verified', 'all', or 'weekly'
  * @param {number} limitCount - Max entries to return
  */
 async function getLeaderboard(type = 'verified', limitCount = 50) {
@@ -442,6 +442,33 @@ async function getLeaderboard(type = 'verified', limitCount = 50) {
   // Filter by verification type if needed
   if (type === 'verified') {
     results = results.filter(p => p.verification?.type !== 'unverified');
+  }
+
+  // Filter by week if weekly type
+  if (type === 'weekly') {
+    // Calculate start of current week (Monday 00:00 UTC)
+    const now = new Date();
+    const dayOfWeek = now.getUTCDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const startOfWeek = new Date(now);
+    startOfWeek.setUTCDate(now.getUTCDate() - daysToMonday);
+    startOfWeek.setUTCHours(0, 0, 0, 0);
+    const weekStartMs = startOfWeek.getTime();
+
+    results = results.filter(p => {
+      const createdAt = p.createdAt;
+      let timestampMs = 0;
+      if (createdAt?.toMillis) {
+        // Firestore Timestamp
+        timestampMs = createdAt.toMillis();
+      } else if (createdAt?.seconds) {
+        // Firestore Timestamp object
+        timestampMs = createdAt.seconds * 1000;
+      } else if (typeof createdAt === 'number') {
+        timestampMs = createdAt;
+      }
+      return timestampMs >= weekStartMs;
+    });
   }
 
   // Sort by deal amount descending

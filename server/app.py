@@ -1756,6 +1756,177 @@ def get_user_leaderboard_entry(user_id):
     return jsonify({'entry': None})
 
 
+@app.route('/api/leaderboard/weekly', methods=['GET'])
+def get_weekly_leaderboard_endpoint():
+    """Get weekly leaderboard entries."""
+    from firebase_admin_init import get_weekly_leaderboard
+
+    verified_only = request.args.get('verified', 'true').lower() == 'true'
+    limit_count = min(int(request.args.get('limit', 50)), 100)
+
+    entries = get_weekly_leaderboard(verified_only=verified_only, limit_count=limit_count)
+    return jsonify({'entries': entries})
+
+
+# =============================================================================
+# Challenge a Friend (Phase 3)
+# =============================================================================
+
+@app.route('/api/challenges', methods=['POST'])
+@optional_auth
+def create_challenge():
+    """Create a new challenge from a completed pitch."""
+    from firebase_admin_init import save_challenge_to_firestore
+
+    data = request.json
+
+    # Get user info if authenticated
+    user_id = None
+    twitter_handle = 'anonymous'
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+        if hasattr(request, 'user_data') and request.user_data:
+            twitter_handle = request.user_data.get('twitterHandle', 'anonymous')
+
+    challenge_data = {
+        'creatorUserId': user_id,
+        'creatorTwitterHandle': twitter_handle,
+        'pitchData': data.get('pitchData', {}),
+        'creatorResult': data.get('creatorResult', {})
+    }
+
+    try:
+        challenge_id = save_challenge_to_firestore(challenge_data)
+        return jsonify({
+            'success': True,
+            'challengeId': challenge_id,
+            'shareUrl': f"{request.host_url}?challenge={challenge_id}"
+        })
+    except Exception as e:
+        print(f"[Challenge] Failed to create challenge: {e}")
+        return jsonify({'error': 'Failed to create challenge'}), 500
+
+
+@app.route('/api/challenges/<challenge_id>', methods=['GET'])
+def get_challenge(challenge_id):
+    """Get a challenge by ID."""
+    from firebase_admin_init import get_challenge_from_firestore
+
+    challenge = get_challenge_from_firestore(challenge_id)
+    if challenge:
+        return jsonify({'challenge': challenge})
+    return jsonify({'error': 'Challenge not found'}), 404
+
+
+@app.route('/api/challenges/<challenge_id>/attempt', methods=['POST'])
+@optional_auth
+def record_challenge_attempt(challenge_id):
+    """Record an attempt on a challenge."""
+    from firebase_admin_init import add_attempt_to_challenge, get_challenge_from_firestore
+
+    data = request.json
+
+    # Get user info if authenticated
+    user_id = None
+    twitter_handle = 'anonymous'
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+        if hasattr(request, 'user_data') and request.user_data:
+            twitter_handle = request.user_data.get('twitterHandle', 'anonymous')
+
+    attempt_data = {
+        'userId': user_id,
+        'twitterHandle': twitter_handle,
+        'result': data.get('result', {})
+    }
+
+    try:
+        success = add_attempt_to_challenge(challenge_id, attempt_data)
+        if success:
+            # Get updated challenge with creator result for comparison
+            challenge = get_challenge_from_firestore(challenge_id)
+            creator_result = challenge.get('creatorResult', {}) if challenge else {}
+            attempt_result = attempt_data.get('result', {})
+
+            # Determine winner
+            creator_amount = creator_result.get('dealAmount', 0)
+            attempt_amount = attempt_result.get('dealAmount', 0)
+
+            winner = 'tie'
+            if attempt_amount > creator_amount:
+                winner = 'challenger'
+            elif creator_amount > attempt_amount:
+                winner = 'creator'
+
+            return jsonify({
+                'success': True,
+                'winner': winner,
+                'creatorResult': creator_result,
+                'attemptResult': attempt_result
+            })
+        return jsonify({'error': 'Failed to record attempt'}), 500
+    except Exception as e:
+        print(f"[Challenge] Failed to record attempt: {e}")
+        return jsonify({'error': 'Failed to record attempt'}), 500
+
+
+# =============================================================================
+# Daily/Weekly Challenges (Phase 5)
+# =============================================================================
+
+@app.route('/api/daily-challenge', methods=['GET'])
+def get_daily_challenge():
+    """Get the current daily challenge."""
+    from daily_challenges import get_current_daily_challenge
+    challenge = get_current_daily_challenge()
+    return jsonify({'challenge': challenge})
+
+
+@app.route('/api/weekly-challenge', methods=['GET'])
+def get_weekly_challenge():
+    """Get the current weekly challenge."""
+    from daily_challenges import get_current_weekly_challenge
+    challenge = get_current_weekly_challenge()
+    return jsonify({'challenge': challenge})
+
+
+@app.route('/api/challenges/active', methods=['GET'])
+def get_active_challenges():
+    """Get both daily and weekly challenges."""
+    from daily_challenges import get_current_daily_challenge, get_current_weekly_challenge
+    return jsonify({
+        'daily': get_current_daily_challenge(),
+        'weekly': get_current_weekly_challenge()
+    })
+
+
+@app.route('/api/daily-challenge/check', methods=['POST'])
+@optional_auth
+def check_daily_challenge_completion():
+    """Check if a pitch completes the daily challenge."""
+    from daily_challenges import get_current_daily_challenge, check_challenge_completion
+    from firebase_admin_init import get_user_pitches
+
+    data = request.json
+    pitch_data = data.get('pitchData', {})
+    outcome = data.get('outcome', {})
+
+    # Get user history for personal best check
+    user_history = []
+    if hasattr(request, 'user') and request.user:
+        user_id = request.user.get('uid')
+        user_history = get_user_pitches(user_id, limit_count=50)
+
+    challenge = get_current_daily_challenge()
+    result = check_challenge_completion(challenge, pitch_data, outcome, user_history)
+
+    return jsonify({
+        'challenge': challenge,
+        'completed': result['completed'],
+        'reason': result['reason']
+    })
+
+
 # =============================================================================
 # Rate Limit Status
 # =============================================================================

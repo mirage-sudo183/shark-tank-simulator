@@ -698,6 +698,15 @@
               </svg>
               Verified
             </button>
+            <button class="leaderboard-tab" data-tab="weekly">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              This Week
+            </button>
             <button class="leaderboard-tab" data-tab="all">
               All Pitches
             </button>
@@ -764,7 +773,19 @@
         <div class="deal-card" id="dealCard">
           <div class="deal-card-header">
             <div class="deal-card-logo">🦈</div>
-            <div class="deal-card-title">SHARK TANK SIMULATOR</div>
+            <div class="deal-card-title">PITCHTANK</div>
+            <!-- Weekly rank badge -->
+            <div class="deal-card-weekly-rank" id="dealCardWeeklyRank" style="display: none;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+              </svg>
+              <span>#1 This Week</span>
+            </div>
+          </div>
+
+          <!-- Viral hook display -->
+          <div class="deal-card-viral-hook" id="dealCardViralHook" style="display: none;">
+            Asked for $500K, got $1M 🤯
           </div>
 
           <div class="deal-card-result" id="dealCardResult">
@@ -784,12 +805,18 @@
             <div class="deal-card-shark-name" id="dealCardSharkName">Mark Cuban</div>
           </div>
 
+          <!-- Best quote from session -->
+          <div class="deal-card-quote" id="dealCardQuote" style="display: none;">
+            <span class="quote-text">"This is exactly what I look for in an investment..."</span>
+            <span class="quote-author">— Mark Cuban</span>
+          </div>
+
           <div class="deal-card-valuation" id="dealCardValuation">
             Valuation: $5,000,000
           </div>
 
           <div class="deal-card-footer">
-            <span>sharktank.simulator</span>
+            <span>pitchtank.ai</span>
             <span class="deal-card-date" id="dealCardDate"></span>
           </div>
         </div>
@@ -810,6 +837,15 @@
             </svg>
             Share on X
           </button>
+          <button class="deal-card-btn deal-card-btn--challenge" onclick="window.createChallenge()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Challenge Friend
+          </button>
           <button class="deal-card-btn deal-card-btn--copy" onclick="window.copyDealLink()">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -819,6 +855,107 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Shareable Quote Card Modal (Phase 2) -->
+    <div class="quote-card-modal" id="quoteCardModal" style="display: none;">
+      <div class="quote-card-backdrop" onclick="window.closeQuoteCard()"></div>
+      <div class="quote-card-container">
+        <button class="quote-card-close" onclick="window.closeQuoteCard()">&times;</button>
+
+        <!-- The shareable quote card -->
+        <div class="quote-card" id="quoteCard">
+          <div class="quote-card-header">
+            <div class="quote-card-logo">🦈</div>
+            <div class="quote-card-title">PITCHTANK</div>
+          </div>
+
+          <div class="quote-card-content">
+            <img class="quote-card-shark-img" id="quoteCardSharkImg" src="" alt="Shark">
+            <div class="quote-card-text" id="quoteCardText">
+              "This is exactly what I look for in an investment..."
+            </div>
+            <div class="quote-card-speaker" id="quoteCardSpeaker">— Mark Cuban</div>
+          </div>
+
+          <div class="quote-card-footer">
+            <span class="quote-card-company" id="quoteCardCompany">On Your Pitch</span>
+            <span>pitchtank.ai</span>
+          </div>
+        </div>
+
+        <!-- Share buttons -->
+        <div class="quote-card-actions">
+          <button class="quote-card-btn quote-card-btn--download" onclick="window.downloadQuoteCard()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </button>
+          <button class="quote-card-btn quote-card-btn--twitter" onclick="window.shareQuoteTwitter()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            Share on X
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Challenge Comparison Modal (Phase 3) -->
+    <div class="challenge-modal" id="challengeComparisonModal" style="display: none;">
+      <div class="challenge-modal-backdrop" onclick="window.closeChallengeComparison()"></div>
+      <div class="challenge-modal-container">
+        <button class="challenge-modal-close" onclick="window.closeChallengeComparison()">&times;</button>
+        <h2 class="challenge-modal-title">Challenge Results</h2>
+        <div class="challenge-comparison">
+          <div class="challenge-result challenge-result--creator">
+            <div class="challenge-result-label">Challenger</div>
+            <div class="challenge-result-name" id="challengeCreatorName">@username</div>
+            <div class="challenge-result-amount" id="challengeCreatorAmount">$500,000</div>
+            <div class="challenge-result-equity" id="challengeCreatorEquity">for 10%</div>
+          </div>
+          <div class="challenge-vs">VS</div>
+          <div class="challenge-result challenge-result--you">
+            <div class="challenge-result-label">You</div>
+            <div class="challenge-result-name">Your Result</div>
+            <div class="challenge-result-amount" id="challengeYourAmount">$0</div>
+            <div class="challenge-result-equity" id="challengeYourEquity">-</div>
+          </div>
+        </div>
+        <div class="challenge-winner" id="challengeWinner">Waiting for your pitch...</div>
+        <button class="challenge-share-btn" onclick="window.shareChallengeResult()">
+          Share Result on X
+        </button>
+      </div>
+    </div>
+
+    <!-- Challenge Banner (shown on entry form when challenge URL detected) -->
+    <div class="challenge-banner" id="challengeBanner" style="display: none;">
+      <div class="challenge-banner-icon">⚔️</div>
+      <div class="challenge-banner-content">
+        <div class="challenge-banner-title">You've Been Challenged!</div>
+        <div class="challenge-banner-text" id="challengeBannerText">
+          <span id="challengerName">@someone</span> raised <span id="challengerAmount">$500K</span>. Can you beat them?
+        </div>
+      </div>
+      <button class="challenge-banner-close" onclick="this.parentElement.style.display='none'">&times;</button>
+    </div>
+
+    <!-- Daily Challenge Banner (shown on entry form) -->
+    <div class="daily-challenge-banner" id="dailyChallengeBanner" style="display: none;">
+      <div class="daily-challenge-badge" id="dailyChallengeBadge">💰</div>
+      <div class="daily-challenge-content">
+        <div class="daily-challenge-header">
+          <span class="daily-challenge-label">Today's Challenge</span>
+          <span class="daily-challenge-timer" id="dailyChallengeTimer">23:59:59</span>
+        </div>
+        <div class="daily-challenge-name" id="dailyChallengeName">Million Dollar Monday</div>
+        <div class="daily-challenge-desc" id="dailyChallengeDesc">Pitch a company valued at $1M+</div>
+      </div>
+      <button class="daily-challenge-close" onclick="this.parentElement.style.display='none'">&times;</button>
     </div>
   </div>
 
