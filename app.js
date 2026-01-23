@@ -612,6 +612,16 @@
     const authUserName = document.getElementById('authUserName');
 
     if (currentUser) {
+      // Determine display name with fallbacks
+      let displayName = currentUser.displayName;
+      if (currentUser.twitterHandle) {
+        displayName = `@${currentUser.twitterHandle}`;
+      } else if (!displayName && currentUser.email) {
+        displayName = currentUser.email.split('@')[0];
+      } else if (!displayName) {
+        displayName = 'User';
+      }
+
       // Entry view user bar
       if (userBar) {
         userBar.style.display = 'flex';
@@ -619,7 +629,7 @@
           userBarAvatar.src = currentUser.photoURL || 'https://via.placeholder.com/32';
         }
         if (userBarName) {
-          userBarName.textContent = currentUser.twitterHandle ? `@${currentUser.twitterHandle}` : currentUser.displayName;
+          userBarName.textContent = displayName;
         }
       }
 
@@ -631,7 +641,7 @@
           authUserAvatar.src = currentUser.photoURL || 'https://via.placeholder.com/48';
         }
         if (authUserName) {
-          authUserName.textContent = currentUser.twitterHandle ? `@${currentUser.twitterHandle}` : currentUser.displayName;
+          authUserName.textContent = displayName;
         }
       }
     } else {
