@@ -433,19 +433,19 @@ body {
   width: 80px;
   height: 80px;
   margin: 0 auto 24px;
-  background: linear-gradient(135deg, var(--shark-blue-dark) 0%, var(--shark-blue-mid) 100%);
+  background: linear-gradient(135deg, var(--gold-rich) 0%, var(--gold-amber) 100%);
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gold-bright);
-  box-shadow: var(--glow-blue);
+  color: var(--surface-0);
+  box-shadow: var(--glow-gold);
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: var(--glow-blue); }
-  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3); }
+  0%, 100% { box-shadow: var(--glow-gold); }
+  50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.6), 0 0 60px rgba(212, 175, 55, 0.3); }
 }
 
 .transition-message {

@@ -840,15 +840,17 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script src="firebase-env.js"></script>
   <script>
-    // Initialize Firebase Auth
+    // Initialize Firebase Auth and Firestore
     (function() {
       try {
         if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG) {
           firebase.initializeApp(window.FIREBASE_CONFIG);
           const auth = firebase.auth();
+          const db = firebase.firestore();
           const twitterProvider = new firebase.auth.TwitterAuthProvider();
           const googleProvider = new firebase.auth.GoogleAuthProvider();
 
@@ -858,39 +860,117 @@
             handleCodeInApp: true
           };
 
+          // Helper to get or create user document in Firestore
+          async function getOrCreateUserDoc(user, provider, extraData = {}) {
+            const userRef = db.collection('users').doc(user.uid);
+            const userDoc = await userRef.get();
+
+            const userData = {
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL,
+              provider: provider,
+              lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+              ...extraData
+            };
+
+            if (!userDoc.exists) {
+              userData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+              userData.pitchesThisWeek = 0;
+              userData.verifications = {};
+              await userRef.set(userData);
+            } else {
+              await userRef.update(userData);
+            }
+
+            const finalDoc = await userRef.get();
+            return { uid: user.uid, ...finalDoc.data() };
+          }
+
           window.firebaseAuth = {
             auth: auth,
+            db: db,
             twitterProvider: twitterProvider,
             googleProvider: googleProvider,
-            signInWithTwitter: () => auth.signInWithPopup(twitterProvider),
-            signInWithGoogle: () => auth.signInWithPopup(googleProvider),
-            signInWithEmail: (email, password) => auth.signInWithEmailAndPassword(email, password),
-            registerWithEmail: (email, password) => auth.createUserWithEmailAndPassword(email, password),
+            signInWithTwitter: async () => {
+              const result = await auth.signInWithPopup(twitterProvider);
+              const user = result.user;
+              // Extract Twitter handle
+              let twitterHandle = user.displayName || 'unknown';
+              const additionalInfo = result.additionalUserInfo;
+              if (additionalInfo && additionalInfo.username) {
+                twitterHandle = additionalInfo.username;
+              } else if (additionalInfo && additionalInfo.profile && additionalInfo.profile.screen_name) {
+                twitterHandle = additionalInfo.profile.screen_name;
+              }
+              return getOrCreateUserDoc(user, 'twitter', { twitterHandle });
+            },
+            signInWithGoogle: async () => {
+              const result = await auth.signInWithPopup(googleProvider);
+              return getOrCreateUserDoc(result.user, 'google');
+            },
+            signInWithEmail: async (email, password) => {
+              const result = await auth.signInWithEmailAndPassword(email, password);
+              return getOrCreateUserDoc(result.user, 'email');
+            },
+            registerWithEmail: async (email, password) => {
+              const result = await auth.createUserWithEmailAndPassword(email, password);
+              return getOrCreateUserDoc(result.user, 'email');
+            },
             sendMagicLink: (email) => {
               return auth.sendSignInLinkToEmail(email, actionCodeSettings).then(() => {
                 window.localStorage.setItem('emailForSignIn', email);
               });
             },
-            completeMagicLinkSignIn: () => {
+            completeMagicLinkSignIn: async () => {
               if (auth.isSignInWithEmailLink(window.location.href)) {
                 let email = window.localStorage.getItem('emailForSignIn');
                 if (!email) {
                   email = window.prompt('Please provide your email for confirmation');
                 }
                 if (email) {
-                  return auth.signInWithEmailLink(email, window.location.href).then((result) => {
-                    window.localStorage.removeItem('emailForSignIn');
-                    window.history.replaceState(null, '', window.location.pathname);
-                    return result;
-                  });
+                  const result = await auth.signInWithEmailLink(email, window.location.href);
+                  window.localStorage.removeItem('emailForSignIn');
+                  window.history.replaceState(null, '', window.location.pathname);
+                  return getOrCreateUserDoc(result.user, 'email_link');
                 }
               }
-              return Promise.resolve(null);
+              return null;
             },
             isSignInWithEmailLink: () => auth.isSignInWithEmailLink(window.location.href),
             updateProfile: (user, profile) => user.updateProfile(profile),
             signOutUser: () => auth.signOut(),
-            onAuthStateChanged: (callback) => auth.onAuthStateChanged(callback),
+            onAuthStateChanged: (callback) => {
+              return auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                  // Fetch enriched user data from Firestore
+                  try {
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    if (userDoc.exists) {
+                      callback({ uid: user.uid, ...userDoc.data() });
+                    } else {
+                      // Fallback to basic Firebase user data
+                      callback({
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        photoURL: user.photoURL
+                      });
+                    }
+                  } catch (err) {
+                    console.log('Error fetching user data:', err);
+                    callback({
+                      uid: user.uid,
+                      email: user.email,
+                      displayName: user.displayName,
+                      photoURL: user.photoURL
+                    });
+                  }
+                } else {
+                  callback(null);
+                }
+              });
+            },
             getCurrentUser: () => auth.currentUser
           };
         } else {
