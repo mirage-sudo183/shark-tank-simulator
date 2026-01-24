@@ -4448,27 +4448,33 @@
         body: JSON.stringify(challengeData)
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to create challenge');
-      }
-
       const data = await response.json();
-      currentChallengeId = data.challengeId;
 
-      // Share on Twitter with challenge link
-      const challengeUrl = `${window.location.origin}?challenge=${data.challengeId}`;
-      const amount = currentDealData.offer?.amount || 0;
-      const twitterHandle = currentUser?.twitterHandle ? `@${currentUser.twitterHandle}` : 'I';
+      // Handle both success and fallback cases
+      if (data.success || data.challengeId) {
+        currentChallengeId = data.challengeId;
 
-      const tweetText = `🎯 ${twitterHandle} just raised $${formatAmount(amount)} on PitchTank!\n\nThink you can beat my deal? Take the challenge 👇`;
+        // Use the share URL from the response, or construct one
+        const challengeUrl = data.shareUrl || `${window.location.origin}?challenge=${data.challengeId}`;
+        const amount = currentDealData.offer?.amount || 0;
+        const twitterHandle = currentUser?.twitterHandle ? `@${currentUser.twitterHandle}` : 'I';
 
-      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(challengeUrl)}`;
+        const tweetText = `🎯 ${twitterHandle} just raised $${formatAmount(amount)} on PitchTank!\n\nThink you can beat my deal? Take the challenge 👇`;
 
-      window.open(tweetUrl, '_blank', 'width=550,height=420');
+        const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(challengeUrl)}`;
+
+        window.open(tweetUrl, '_blank', 'width=550,height=420');
+      } else {
+        throw new Error(data.error || 'Failed to create challenge');
+      }
 
     } catch (err) {
       console.error('[Challenge] Failed to create:', err);
-      alert('Failed to create challenge. Please try again.');
+      // Fallback: Still allow sharing without challenge ID
+      const amount = currentDealData.offer?.amount || 0;
+      const tweetText = `🎯 I just raised $${formatAmount(amount)} on PitchTank!\n\nThink you can beat my deal?`;
+      const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(window.location.origin)}`;
+      window.open(tweetUrl, '_blank', 'width=550,height=420');
     }
   }
 

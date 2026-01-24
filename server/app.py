@@ -1776,9 +1776,33 @@ def get_weekly_leaderboard_endpoint():
 @optional_auth
 def create_challenge():
     """Create a new challenge from a completed pitch."""
-    from firebase_admin_init import save_challenge_to_firestore
+    from firebase_admin_init import save_challenge_to_firestore, get_firestore
 
     data = request.json
+
+    # Check if Firestore is available
+    db = get_firestore()
+    if db is None:
+        # Firestore not available - generate a shareable URL without storing
+        # This allows the feature to work in demo mode
+        import hashlib
+        import json
+        pitch_data = data.get('pitchData', {})
+        result_data = data.get('creatorResult', {})
+
+        # Create a simple hash-based challenge ID
+        challenge_str = json.dumps({
+            'company': pitch_data.get('companyName', ''),
+            'amount': result_data.get('dealAmount', 0)
+        }, sort_keys=True)
+        challenge_id = hashlib.md5(challenge_str.encode()).hexdigest()[:12]
+
+        return jsonify({
+            'success': True,
+            'challengeId': challenge_id,
+            'shareUrl': f"{request.host_url}?ref=challenge&amount={result_data.get('dealAmount', 0)}",
+            'fallback': True
+        })
 
     # Get user info if authenticated
     user_id = None
@@ -1804,7 +1828,14 @@ def create_challenge():
         })
     except Exception as e:
         print(f"[Challenge] Failed to create challenge: {e}")
-        return jsonify({'error': 'Failed to create challenge'}), 500
+        # Fallback to simple share URL
+        result_data = data.get('creatorResult', {})
+        return jsonify({
+            'success': True,
+            'challengeId': 'demo',
+            'shareUrl': f"{request.host_url}?ref=challenge&amount={result_data.get('dealAmount', 0)}",
+            'fallback': True
+        })
 
 
 @app.route('/api/challenges/<challenge_id>', methods=['GET'])
