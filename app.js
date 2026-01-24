@@ -3566,6 +3566,9 @@
       sharkName: data.sharkName
     });
 
+    // Save pitch result to Firestore for leaderboard
+    savePitchToLeaderboard(data);
+
     // Auto-show deal card after 2 seconds
     setTimeout(() => {
       showDealCard(data);
@@ -4574,6 +4577,33 @@
   window.createChallenge = createChallenge;
   window.closeChallengeComparison = closeChallengeComparison;
   window.shareChallengeResult = shareChallengeResult;
+
+  // ========================================
+  // Save Pitch to Leaderboard
+  // ========================================
+
+  async function savePitchToLeaderboard(dealData) {
+    // Only save if user is authenticated
+    if (!window.firebaseAuth || !currentUser) {
+      console.log('[Leaderboard] Not saving - user not authenticated');
+      return;
+    }
+
+    try {
+      const outcome = {
+        result: 'deal',
+        dealAmount: dealData.offer?.amount || 0,
+        dealEquity: dealData.offer?.equity || 0,
+        shark: dealData.sharkName,
+        sharkId: dealData.sharkId
+      };
+
+      await window.firebaseAuth.savePitchResult(pitchData, outcome, { type: 'unverified' });
+      console.log('[Leaderboard] Pitch saved successfully');
+    } catch (err) {
+      console.error('[Leaderboard] Failed to save pitch:', err);
+    }
+  }
 
   // ========================================
   // Daily/Weekly Challenges (Phase 5)

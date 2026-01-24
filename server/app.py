@@ -1959,6 +1959,70 @@ def check_daily_challenge_completion():
 
 
 # =============================================================================
+# Demo Data Seeding (for testing leaderboard)
+# =============================================================================
+
+@app.route('/api/seed-demo-leaderboard', methods=['POST'])
+def seed_demo_leaderboard():
+    """Seed the leaderboard with demo data for testing."""
+    from firebase_admin_init import get_firestore
+    from firebase_admin import firestore as fs
+
+    db = get_firestore()
+    if db is None:
+        return jsonify({'error': 'Firestore not available'}), 500
+
+    import time
+    import random
+
+    demo_entries = [
+        {'handle': '@techfounder', 'company': 'AI Analytics Pro', 'amount': 1500000, 'equity': 12, 'shark': 'Marcus Chen'},
+        {'handle': '@startupqueen', 'company': 'EcoPackaging Co', 'amount': 800000, 'equity': 15, 'shark': 'Elena Rodriguez'},
+        {'handle': '@cryptobro', 'company': 'DeFi Lending', 'amount': 2000000, 'equity': 8, 'shark': 'Richard Sterling'},
+        {'handle': '@foodiefounder', 'company': 'Ghost Kitchen App', 'amount': 500000, 'equity': 20, 'shark': 'Daniel Kim'},
+        {'handle': '@healthtech', 'company': 'TeleHealth Plus', 'amount': 1200000, 'equity': 10, 'shark': 'Victor "The Calculator" Zheng'},
+        {'handle': '@saasbuilder', 'company': 'HR Automation', 'amount': 750000, 'equity': 18, 'shark': 'Marcus Chen'},
+        {'handle': '@retailninja', 'company': 'Smart Inventory', 'amount': 600000, 'equity': 22, 'shark': 'Elena Rodriguez'},
+        {'handle': '@cleantech', 'company': 'Solar Install Pro', 'amount': 900000, 'equity': 14, 'shark': 'Richard Sterling'},
+        {'handle': '@edtech', 'company': 'CodeCamp Kids', 'amount': 400000, 'equity': 25, 'shark': 'Daniel Kim'},
+        {'handle': '@fintech', 'company': 'Budget Buddy App', 'amount': 1100000, 'equity': 11, 'shark': 'Victor "The Calculator" Zheng'},
+    ]
+
+    created = 0
+    for entry in demo_entries:
+        try:
+            pitch_ref = db.collection('pitches').document()
+            pitch_ref.set({
+                'id': pitch_ref.id,
+                'userId': f'demo_{entry["handle"]}',
+                'userTwitterHandle': entry['handle'],
+                'userDisplayName': entry['handle'].replace('@', '').title(),
+                'pitchData': {
+                    'companyName': entry['company'],
+                    'companyDescription': f'{entry["company"]} - revolutionizing the industry',
+                    'amountRaising': entry['amount'],
+                    'equityPercent': entry['equity'] + random.randint(0, 5)
+                },
+                'outcome': {
+                    'result': 'deal',
+                    'dealAmount': entry['amount'],
+                    'dealEquity': entry['equity'],
+                    'shark': entry['shark']
+                },
+                'verification': {'type': 'demo'},
+                'createdAt': fs.SERVER_TIMESTAMP
+            })
+            created += 1
+        except Exception as e:
+            print(f"[Seed] Failed to create entry: {e}")
+
+    return jsonify({
+        'success': True,
+        'message': f'Created {created} demo leaderboard entries'
+    })
+
+
+# =============================================================================
 # Rate Limit Status
 # =============================================================================
 
